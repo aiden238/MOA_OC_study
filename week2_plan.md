@@ -5,9 +5,9 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 2주차 |
-| **상태** | 🔲 대기 |
-| **시작일** | — |
-| **완료일** | — |
+| **상태** | ✅ 완료 |
+| **시작일** | 2026-04-18 |
+| **완료일** | 2026-04-18 |
 
 ---
 
@@ -89,14 +89,14 @@
 
 ## 완료 기준 (DoD)
 
-- [ ] `TaskRequest(prompt="test")` 등 스키마 validation 통과
-- [ ] `AgentOutput`이 필수 필드 누락 시 ValidationError 발생
-- [ ] `tests/test_schemas.py` 전체 통과
-- [ ] Base Agent가 실제 LLM API를 호출하고 `AgentOutput`으로 파싱
-- [ ] `tests/test_base_agent.py` 통과 (API 키 필요, 또는 mock 테스트)
-- [ ] 프롬프트 파일 8개가 `app/prompts/`에 존재
-- [ ] `BaseAgent.load_prompt("critic")` 호출 시 `critic.md` 내용 반환
-- [ ] `docs/03_agent_roles.md`에 8개 역할의 목적·입출력이 기술되어 있음
+- [x] `TaskRequest(prompt="test")` 등 스키마 validation 통과
+- [x] `AgentOutput`이 필수 필드 누락 시 ValidationError 발생
+- [x] `tests/test_schemas.py` 전체 통과
+- [x] Base Agent가 실제 LLM API를 호출하고 `AgentOutput`으로 파싱
+- [x] `tests/test_base_agent.py` 통과 (API 키 필요, 또는 mock 테스트)
+- [x] 프롬프트 파일 8개가 `app/prompts/`에 존재
+- [x] `BaseAgent.load_prompt("critic")` 호출 시 `critic.md` 내용 반환
+- [x] `docs/03_agent_roles.md`에 8개 역할의 목적·입출력이 기술되어 있음
 
 ---
 

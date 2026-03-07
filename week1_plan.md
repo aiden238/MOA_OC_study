@@ -89,15 +89,15 @@
 
 ## 완료 기준 (DoD)
 
-- [ ] `python -m pytest tests/test_logger.py` 통과
-- [ ] logger가 `data/traces/`에 JSON 파일을 정상 생성
-- [ ] `data/traces/{run_id}.json`의 필드가 명세와 일치
-- [ ] `config.py`가 `.env` 파일에서 설정을 정상 로딩
-- [ ] `timer.py` 데코레이터가 밀리초 단위 레이턴시를 반환
-- [ ] `docs/00_project_goal.md` 뼈대가 채워져 있음
-- [ ] `docs/01_scope_and_nongoals.md` 뼈대가 채워져 있음
-- [ ] `docs/02_architecture.md` 뼈대가 채워져 있음
-- [ ] 모든 디렉토리 구조가 기획서 Section 2와 일치
+- [x] `python -m pytest tests/test_logger.py` 통과
+- [x] logger가 `data/traces/`에 JSON 파일을 정상 생성
+- [x] `data/traces/{run_id}.json`의 필드가 명세와 일치
+- [x] `config.py`가 `.env` 파일에서 설정을 정상 로딩
+- [x] `timer.py` 데코레이터가 밀리초 단위 레이턴시를 반환
+- [x] `docs/00_project_goal.md` 뼈대가 채워져 있음
+- [x] `docs/01_scope_and_nongoals.md` 뼈대가 채워져 있음
+- [x] `docs/02_architecture.md` 뼈대가 채워져 있음
+- [x] 모든 디렉토리 구조가 기획서 Section 2와 일치
 
 ---
 

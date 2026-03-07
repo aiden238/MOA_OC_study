@@ -44,7 +44,7 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 | 주차 | 상태 | 핵심 산출물 | 완료일 |
 |------|------|------------|--------|
 | 1주차 | ✅ 완료 | logger, config, timer, docs/00~02 | 2026-04-17 |
-| 2주차 | 🔲 대기 | 스키마 3종, BaseAgent, 프롬프트 파일 | — |
+| 2주차 | ✅ 완료 | 스키마 3종, BaseAgent, 프롬프트 파일 | 2026-04-18 |
 | 3주차 | 🔲 대기 | 벤치마크 v1, run_single.py, 루브릭 | — |
 | 4주차 | 🔲 대기 | Draft×3, Critic, Synthesizer, run_moa.py | — |
 | 5주차 | 🔲 대기 | Router, Judge, Rewrite, run_full.py | — |

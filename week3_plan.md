@@ -5,9 +5,9 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 3주차 |
-| **상태** | 🔲 대기 |
-| **시작일** | — |
-| **완료일** | — |
+| **상태** | ✅ 완료 |
+| **시작일** | 2026-03-08 |
+| **완료일** | 2026-03-08 |
 
 ---
 
@@ -83,14 +83,14 @@
 
 ## 완료 기준 (DoD)
 
-- [ ] `data/benchmarks/v1.json`에 4종 × 3건 = 12건의 벤치마크 데이터 존재
-- [ ] `python scripts/run_single.py` 실행 시 12건 입력에 대한 결과가 `data/outputs/`에 저장
-- [ ] 각 실행의 trace가 `data/traces/`에 JSON으로 저장
-- [ ] trace JSON의 필드가 `TraceRecord` 스키마와 일치
-- [ ] 루브릭이 clarity / structure / constraint_following / usefulness 4항목을 1~5점으로 채점
-- [ ] `app/eval/metrics.py`가 total_tokens, total_cost, total_latency를 정상 계산
-- [ ] `tests/test_pipeline_single.py` 통과
-- [ ] 수동 채점 5건 완료, LLM Judge와의 상관관계 확인
+- [x] `data/benchmarks/v1.json`에 4종 × 3건 = 12건의 벤치마크 데이터 존재
+- [x] `python scripts/run_single.py` 실행 시 12건 입력에 대한 결과가 `data/outputs/`에 저장
+- [x] 각 실행의 trace가 `data/traces/`에 JSON으로 저장
+- [x] trace JSON의 필드가 `TraceRecord` 스키마와 일치
+- [x] 루브릭이 clarity / structure / constraint_following / usefulness 4항목을 1~5점으로 채점
+- [x] `app/eval/metrics.py`가 total_tokens, total_cost, total_latency를 정상 계산
+- [x] `tests/test_pipeline_single.py` 통과
+- [x] 수동 채점 5건 완료, LLM Judge와의 상관관계 확인
 
 ---
 

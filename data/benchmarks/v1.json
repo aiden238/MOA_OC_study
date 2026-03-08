@@ -1,0 +1,101 @@
+{
+  "version": "v1",
+  "cases": [
+    {
+      "id": "sum-001",
+      "type": "summarize",
+      "prompt": "다음 텍스트를 3문장으로 요약하세요: 인공지능은 컴퓨터 과학의 한 분야로, 인간의 학습 능력과 추론 능력, 지각 능력, 자연어 이해 능력 등을 컴퓨터 프로그램으로 실현한 기술이다. 최근 딥러닝 기술의 발전으로 이미지 인식, 음성 인식, 자연어 처리 등 다양한 분야에서 혁신적인 성과를 이루고 있다. 특히 대규모 언어 모델의 등장으로 텍스트 생성, 번역, 요약 등의 작업에서 인간 수준에 근접하는 성능을 보여주고 있으며, 이는 산업 전반에 걸쳐 자동화와 효율성 향상을 가져오고 있다.",
+      "constraints": {"max_sentences": 3},
+      "difficulty": "low",
+      "expected_moa_advantage": "minimal"
+    },
+    {
+      "id": "sum-002",
+      "type": "summarize",
+      "prompt": "다음 텍스트를 3문장으로 요약하세요: 기후 변화는 지구의 평균 기온이 장기적으로 상승하는 현상을 말한다. 산업혁명 이후 화석 연료의 대량 사용으로 대기 중 이산화탄소 농도가 급격히 증가했으며, 이는 온실효과를 강화시켜 지구 온난화를 가속화하고 있다. 그 결과 해수면 상승, 극단적 기상현상의 증가, 생태계 파괴 등의 문제가 발생하고 있다. 국제사회는 파리협정을 통해 지구 평균 기온 상승을 1.5도 이내로 제한하기 위한 노력을 기울이고 있으나, 각국의 이해관계 충돌로 실질적인 감축 목표 달성에는 어려움을 겪고 있다.",
+      "constraints": {"max_sentences": 3},
+      "difficulty": "low",
+      "expected_moa_advantage": "minimal"
+    },
+    {
+      "id": "sum-003",
+      "type": "summarize",
+      "prompt": "다음 텍스트를 3문장으로 요약하세요: 원격 근무는 코로나19 팬데믹 이후 전 세계적으로 확산된 근무 방식이다. 통신 기술의 발전으로 사무실 출근 없이도 업무 수행이 가능해졌으며, 많은 기업들이 하이브리드 근무 모델을 도입하고 있다. 원격 근무의 장점으로는 출퇴근 시간 절약, 유연한 일정 관리, 업무 집중도 향상 등이 있으나, 동료와의 소통 부족, 업무와 사생활의 경계 모호, 자기 관리의 어려움 등의 단점도 존재한다. 최근 연구에 따르면 원격 근무와 사무실 근무를 적절히 조합한 하이브리드 모델이 생산성과 직원 만족도 모두에서 좋은 성과를 보이는 것으로 나타났다.",
+      "constraints": {"max_sentences": 3},
+      "difficulty": "low",
+      "expected_moa_advantage": "minimal"
+    },
+    {
+      "id": "exp-001",
+      "type": "explain",
+      "prompt": "양자 컴퓨팅의 큐비트 개념을 중학생에게 설명하세요.",
+      "constraints": {"audience": "middle_school"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "planner_helps"
+    },
+    {
+      "id": "exp-002",
+      "type": "explain",
+      "prompt": "블록체인 기술의 작동 원리를 비전공자에게 설명하세요.",
+      "constraints": {"audience": "non_technical"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "planner_helps"
+    },
+    {
+      "id": "exp-003",
+      "type": "explain",
+      "prompt": "머신러닝에서 과적합(overfitting)이 왜 문제인지 대학교 1학년 수준으로 설명하세요.",
+      "constraints": {"audience": "college_freshman"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "planner_helps"
+    },
+    {
+      "id": "ide-001",
+      "type": "ideate",
+      "prompt": "도시의 교통 혼잡을 줄이기 위한 창의적인 아이디어 5가지를 제시하세요.",
+      "constraints": {"count": 5, "novelty": "high"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "multi_draft_helps"
+    },
+    {
+      "id": "ide-002",
+      "type": "ideate",
+      "prompt": "고등학생의 독서 습관을 기르기 위한 혁신적인 방법 5가지를 제시하세요.",
+      "constraints": {"count": 5, "novelty": "high"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "multi_draft_helps"
+    },
+    {
+      "id": "ide-003",
+      "type": "ideate",
+      "prompt": "1인 가구의 외로움을 해결하기 위한 커뮤니티 기반 아이디어 5가지를 제시하세요.",
+      "constraints": {"count": 5, "novelty": "high"},
+      "difficulty": "medium",
+      "expected_moa_advantage": "multi_draft_helps"
+    },
+    {
+      "id": "crw-001",
+      "type": "critique_rewrite",
+      "prompt": "다음 이메일을 전문적인 비즈니스 톤으로 개선하세요: '안녕하세요 김과장님, 저번에 말한 프로젝트 건인데요 일정이 좀 빡빡한거 같아서요. 인원을 더 붙여주시면 안될까요? 아 그리고 예산도 좀 더 필요할것 같습니다. 답변 부탁드려요.'",
+      "constraints": {"tone": "professional"},
+      "difficulty": "high",
+      "expected_moa_advantage": "critique_rewrite_helps"
+    },
+    {
+      "id": "crw-002",
+      "type": "critique_rewrite",
+      "prompt": "다음 제품 설명을 더 매력적으로 다시 작성하세요: '이 무선 이어폰은 블루투스 5.0을 지원합니다. 배터리는 6시간 사용 가능하고 충전 케이스로 추가 18시간을 쓸 수 있습니다. 방수도 됩니다. 가격은 49,900원입니다.'",
+      "constraints": {"tone": "marketing", "max_words": 150},
+      "difficulty": "high",
+      "expected_moa_advantage": "critique_rewrite_helps"
+    },
+    {
+      "id": "crw-003",
+      "type": "critique_rewrite",
+      "prompt": "다음 자기소개서 문단을 더 인상적으로 개선하세요: '저는 대학교에서 경영학을 전공했습니다. 동아리 활동도 했고 인턴 경험도 있습니다. 팀 프로젝트에서 리더를 맡은 적도 있습니다. 이런 경험을 바탕으로 귀사에서 열심히 일하고 싶습니다.'",
+      "constraints": {"tone": "professional", "specificity": "high"},
+      "difficulty": "high",
+      "expected_moa_advantage": "critique_rewrite_helps"
+    }
+  ]
+}

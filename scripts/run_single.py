@@ -1,4 +1,9 @@
-"""Baseline 단일 호출 파이프라인 — 벤치마크 케이스를 단일 LLM으로 실행."""
+"""Baseline 단일 호출 파이프라인 — 벤치마크 케이스를 단일 LLM으로 실행.
+
+4주차 MOA 파이프라인과 비교하기 위한 기준선(baseline) 실행.
+benchmarks/v1.json의 12건 케이스를 단일 LLM 호출로 처리하고
+trace와 output을 JSON으로 저장한다.
+"""
 
 import argparse
 import asyncio

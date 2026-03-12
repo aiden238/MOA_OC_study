@@ -1,4 +1,9 @@
-"""LLM Judge 기반 루브릭 채점 — 4항목 1~5점 자동 평가."""
+"""LLM Judge 기반 루브릭 채점 — 4항목 1~5점 자동 평가.
+
+LLM을 채점자(Judge)로 활용하여 생성 결과의 품질을
+clarity, structure, constraint_following, usefulness
+4가지 기준으로 1~5점 척도로 채점한다.
+"""
 
 import json
 

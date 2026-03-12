@@ -5,9 +5,9 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 4주차 |
-| **상태** | 🔲 대기 |
-| **시작일** | — |
-| **완료일** | — |
+| **상태** | ✅ 완료 |
+| **시작일** | 2026-03-09 |
+| **완료일** | 2026-03-12 |
 
 ---
 
@@ -90,15 +90,15 @@
 
 ## 완료 기준 (DoD)
 
-- [ ] `python scripts/run_moa.py` 실행 시 3개 draft가 생성됨
-- [ ] 3개 draft가 **비동기 병렬**로 실행됨 (`asyncio.gather`)
-- [ ] Critic이 3개 draft의 강점/약점을 구조화된 JSON으로 분석
-- [ ] Synthesizer가 critic 피드백 + drafts로 최종 결과 생성
-- [ ] trace에 각 에이전트별(draft×3, critic, synthesizer) 호출 정보가 모두 기록
-- [ ] 동일 입력에 대해 single vs moa 결과가 나란히 비교 가능
-- [ ] `tests/test_draft_diversity.py` 통과 (유사도 ≤ 0.7)
-- [ ] `tests/test_pipeline_moa.py` 통과
-- [ ] API 429 에러 시 재시도 로직이 동작 (tenacity)
+- [x] `python scripts/run_moa.py` 실행 시 3개 draft가 생성됨
+- [x] 3개 draft가 **비동기 병렬**로 실행됨 (`asyncio.gather`)
+- [x] Critic이 3개 draft의 강점/약점을 구조화된 JSON으로 분석
+- [x] Synthesizer가 critic 피드백 + drafts로 최종 결과 생성
+- [x] trace에 각 에이전트별(draft×3, critic, synthesizer) 호출 정보가 모두 기록
+- [x] 동일 입력에 대해 single vs moa 결과가 나란히 비교 가능
+- [x] `tests/test_draft_diversity.py` 통과 (유사도 ≤ 0.7)
+- [x] `tests/test_pipeline_moa.py` 통과
+- [x] API 429 에러 시 재시도 로직이 동작 (tenacity)
 
 ---
 

@@ -1,12 +1,13 @@
-"""에이전트 입출력 스키마 — AgentInput, AgentOutput.
+"""에이전트 입출력 스키마 — AgentInput, AgentOutput, JudgeDecision.
 
-AgentInput:  LLM 호출 전 구성하는 입력 모델
-AgentOutput: LLM 호출 후 반환하는 결과 모델
+AgentInput:    LLM 호출 전 구성하는 입력 모델
+AgentOutput:   LLM 호출 후 반환하는 결과 모델
+JudgeDecision: Judge Agent의 품질 판정 결과 (pass/rewrite/escalate)
 """
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AgentInput(BaseModel):
@@ -28,3 +29,17 @@ class AgentOutput(BaseModel):
     latency_ms: float          # 응답 지연 시간 (ms)
     cost_estimate: float = 0.0            # 추정 비용 (USD)
     raw_response: dict[str, Any] = {}     # 원본 API 응답
+
+
+class JudgeDecision(BaseModel):
+    """Judge Agent의 품질 판정 결과.
+
+    decision:
+        - "pass":     품질 충분 → 최종 출력으로 확정
+        - "rewrite":  개선 필요 → Rewrite Agent로 전달
+        - "escalate": 근본적 문제 → 사람 검토 플래그
+    """
+    decision: Literal["pass", "rewrite", "escalate"]  # 판정 결과
+    confidence: float = Field(ge=0.0, le=1.0)          # 판정 확신도 (0.0~1.0)
+    reasoning: str                                      # 판정 근거 설명
+    improvement_hints: list[str] = []                   # rewrite 시 개선 포인트

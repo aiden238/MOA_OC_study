@@ -3,7 +3,7 @@
 사용법: from app.schemas import TaskRequest, AgentOutput, ...
 """
 
-from app.schemas.agent_io import AgentInput, AgentOutput
+from app.schemas.agent_io import AgentInput, AgentOutput, JudgeDecision
 from app.schemas.task import TaskPlan, TaskRequest
 from app.schemas.trace import RunSummary, TraceRecord
 
@@ -12,6 +12,7 @@ __all__ = [
     "TaskPlan",
     "AgentInput",
     "AgentOutput",
+    "JudgeDecision",
     "TraceRecord",
     "RunSummary",
 ]

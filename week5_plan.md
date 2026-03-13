@@ -5,9 +5,9 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 5주차 |
-| **상태** | 🔲 대기 |
-| **시작일** | — |
-| **완료일** | — |
+| **상태** | ✅ 완료 |
+| **시작일** | 2026-03-13 |
+| **완료일** | 2026-03-13 |
 
 ---
 
@@ -88,16 +88,16 @@
 
 ## 완료 기준 (DoD)
 
-- [ ] Router가 입력을 분석하여 single/moa 경로를 자동 선택
-- [ ] Rule-based 1차 필터가 명확한 케이스를 LLM 호출 없이 판별
-- [ ] LLM 2차 판별이 애매한 케이스에서 작동
-- [ ] Judge가 "pass/rewrite/escalate" 판정을 JSON으로 반환
-- [ ] rewrite 시 Rewrite Agent가 Judge 피드백을 반영하여 개선
-- [ ] rewrite 루프가 최대 2회로 제한됨
-- [ ] `run_full.py`가 Router → 자동 분기 → 결과 저장까지 end-to-end 실행
-- [ ] cost_tracker가 총 토큰, 추정 비용, 경로별 비용을 집계
-- [ ] `tests/test_router.py` 통과
-- [ ] `docs/04_routing_rules.md`에 라우팅 규칙이 문서화
+- [x] Router가 입력을 분석하여 single/moa 경로를 자동 선택
+- [x] Rule-based 1차 필터가 명확한 케이스를 LLM 호출 없이 판별
+- [x] LLM 2차 판별이 애매한 케이스에서 작동
+- [x] Judge가 "pass/rewrite/escalate" 판정을 JSON으로 반환
+- [x] rewrite 시 Rewrite Agent가 Judge 피드백을 반영하여 개선
+- [x] rewrite 루프가 최대 2회로 제한됨
+- [x] `run_full.py`가 Router → 자동 분기 → 결과 저장까지 end-to-end 실행
+- [x] cost_tracker가 총 토큰, 추정 비용, 경로별 비용을 집계
+- [x] `tests/test_router.py` 통과
+- [x] `docs/04_routing_rules.md`에 라우팅 규칙이 문서화
 
 ---
 

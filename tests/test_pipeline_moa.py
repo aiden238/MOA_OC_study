@@ -1,8 +1,8 @@
-"""MOA 파이프라인 통합 테스트 — Draft×3 → Critic → Synthesizer 전체 파이프라인.
+"""MOA 파이프라인 통합 테스트 — Draft×3 → Critic → Synthesizer → Judge 전체 파이프라인.
 
 Mock API를 사용하여 MOAExecutor의 전체 흐름과 trace 기록을 검증한다.
 - 전체 파이프라인 실행 정상 여부
-- trace 기록 개수 (3 draft + 1 critic + 1 synthesizer = 5)
+- trace 기록 개수 (3 draft + 1 critic + 1 synthesizer + 1 judge = 6)
 - build_moa_summary 집계 정확성
 - run_moa.py의 유틸리티 함수 (save/load/case_to_task)
 """
@@ -15,7 +15,7 @@ import pytest
 
 from app.core.logger import TraceLogger, generate_run_id
 from app.orchestrator.executor import MOAExecutor, build_moa_summary
-from app.schemas.agent_io import AgentOutput
+from app.schemas.agent_io import AgentOutput, JudgeDecision
 from app.schemas.task import TaskRequest
 
 
@@ -36,7 +36,7 @@ class TestMOAExecutor:
 
     @pytest.mark.asyncio
     async def test_full_pipeline_execution(self):
-        """Draft → Critic → Synthesizer 전체 파이프라인이 정상 실행되는지 확인."""
+        """Draft → Critic → Synthesizer → Judge 전체 파이프라인이 정상 실행되는지 확인."""
         mock_drafts = [
             _mock_agent_output("draft_analytical", "분석적 결과"),
             _mock_agent_output("draft_creative", "창의적 결과"),
@@ -44,10 +44,12 @@ class TestMOAExecutor:
         ]
         mock_critique = _mock_agent_output("critic", '{"draft_analyses": [], "recommendation": "A+B"}')
         mock_final = _mock_agent_output("synthesizer", "최종 결과물")
+        mock_judge_decision = JudgeDecision(decision="pass", confidence=0.95, reasoning="품질 충분")
 
         with patch("app.orchestrator.executor.run_all_drafts", new_callable=AsyncMock) as mock_run_drafts, \
              patch("app.orchestrator.executor.CriticAgent") as MockCritic, \
-             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth:
+             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth, \
+             patch("app.orchestrator.executor.JudgeAgent") as MockJudge:
 
             mock_run_drafts.return_value = mock_drafts
 
@@ -59,6 +61,10 @@ class TestMOAExecutor:
             mock_synth_instance.synthesize.return_value = mock_final
             MockSynth.return_value = mock_synth_instance
 
+            mock_judge_instance = AsyncMock()
+            mock_judge_instance.judge.return_value = mock_judge_decision
+            MockJudge.return_value = mock_judge_instance
+
             executor = MOAExecutor()
             logger = TraceLogger(run_id="test-run-001")
             task = TaskRequest(prompt="테스트 프롬프트", task_type="summarize")
@@ -67,10 +73,10 @@ class TestMOAExecutor:
 
         # 최종 출력 확인
         assert final_output == "최종 결과물"
-        # 에이전트 5개 (draft×3 + critic + synthesizer)
-        assert len(all_outputs) == 5
-        # trace 기록 5건
-        assert len(logger.records) == 5
+        # 에이전트 6개 (draft×3 + critic + synthesizer + judge)
+        assert len(all_outputs) == 6
+        # trace 기록 6건
+        assert len(logger.records) == 6
 
     @pytest.mark.asyncio
     async def test_trace_records_agent_names(self):
@@ -82,14 +88,17 @@ class TestMOAExecutor:
         ]
         mock_critique = _mock_agent_output("critic")
         mock_final = _mock_agent_output("synthesizer")
+        mock_judge_decision = JudgeDecision(decision="pass", confidence=0.9, reasoning="OK")
 
         with patch("app.orchestrator.executor.run_all_drafts", new_callable=AsyncMock) as mock_run_drafts, \
              patch("app.orchestrator.executor.CriticAgent") as MockCritic, \
-             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth:
+             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth, \
+             patch("app.orchestrator.executor.JudgeAgent") as MockJudge:
 
             mock_run_drafts.return_value = mock_drafts
             MockCritic.return_value = AsyncMock(critique=AsyncMock(return_value=mock_critique))
             MockSynth.return_value = AsyncMock(synthesize=AsyncMock(return_value=mock_final))
+            MockJudge.return_value = AsyncMock(judge=AsyncMock(return_value=mock_judge_decision))
 
             executor = MOAExecutor()
             logger = TraceLogger(run_id="test-run-002")
@@ -97,11 +106,11 @@ class TestMOAExecutor:
 
             await executor.execute(task, logger)
 
-        # 기록된 에이전트 이름 확인
+        # 기록된 에이전트 이름 확인 (judge 포함)
         agent_names = [r["agent_name"] for r in logger.records]
         assert agent_names == [
             "draft_analytical", "draft_creative", "draft_structured",
-            "critic", "synthesizer",
+            "critic", "synthesizer", "judge",
         ]
 
     @pytest.mark.asyncio
@@ -113,14 +122,17 @@ class TestMOAExecutor:
         ]
         mock_critique = _mock_agent_output("critic")
         mock_final = _mock_agent_output("synthesizer", "2개 draft 합성")
+        mock_judge_decision = JudgeDecision(decision="pass", confidence=0.9, reasoning="OK")
 
         with patch("app.orchestrator.executor.run_all_drafts", new_callable=AsyncMock) as mock_run_drafts, \
              patch("app.orchestrator.executor.CriticAgent") as MockCritic, \
-             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth:
+             patch("app.orchestrator.executor.SynthesizerAgent") as MockSynth, \
+             patch("app.orchestrator.executor.JudgeAgent") as MockJudge:
 
             mock_run_drafts.return_value = mock_drafts
             MockCritic.return_value = AsyncMock(critique=AsyncMock(return_value=mock_critique))
             MockSynth.return_value = AsyncMock(synthesize=AsyncMock(return_value=mock_final))
+            MockJudge.return_value = AsyncMock(judge=AsyncMock(return_value=mock_judge_decision))
 
             executor = MOAExecutor()
             logger = TraceLogger(run_id="test-run-003")
@@ -129,8 +141,8 @@ class TestMOAExecutor:
             final_output, all_outputs = await executor.execute(task, logger)
 
         assert final_output == "2개 draft 합성"
-        # draft 2 + critic 1 + synthesizer 1 = 4
-        assert len(all_outputs) == 4
+        # draft 2 + critic 1 + synthesizer 1 + judge 1 = 5
+        assert len(all_outputs) == 5
 
 
 class TestBuildMOASummary:

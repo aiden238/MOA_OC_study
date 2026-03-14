@@ -39,36 +39,74 @@ def _log_output(logger: TraceLogger, output: AgentOutput, input_prompt: str, pat
 
 
 class MOAExecutor:
-    """Draft → Critic → Synthesizer → Judge → (Rewrite) 파이프라인을 실행."""
+    """Draft → Critic → Synthesizer → Judge → (Rewrite) 파이프라인을 실행.
 
-    async def execute(self, task: TaskRequest, logger: TraceLogger) -> tuple[str, list[AgentOutput]]:
+    `execute`는 선택적으로 `routing`을 받아 RAG/MCP 컨텍스트를 주입할 수 있습니다.
+    backward-compatible하게 기존 호출 시에도 동작합니다.
+    """
+
+    async def execute(self, task: TaskRequest, logger: TraceLogger, routing=None, run_id: str | None = None) -> tuple[str, list[AgentOutput]]:
         """MOA 파이프라인 전체 실행.
 
         Args:
             task: 처리할 태스크 요청
             logger: trace 기록용 로거
+            routing: (선택) Router의 RoutingDecision. RAG/MCP 주입을 위해 사용.
+            run_id: (선택) 실행 식별자
 
         Returns:
             (최종 출력 텍스트, 모든 에이전트 출력 리스트)
         """
+        # 지연 import로 순환 의존성 방지
+        from app.rag.retriever import SimpleRetriever
+        from app.mcp_client.client import MCPClient
+
         all_outputs: list[AgentOutput] = []
 
+        # RAG / MCP 컨텍스트 수집
+        context_parts: list[str] = []
+        path_suffix = ""
+        if routing is not None:
+            if getattr(routing, "requires_rag", False):
+                retriever = SimpleRetriever()
+                # 기본적으로 task.prompt를 질의어로 사용
+                rag_chunks = retriever.query(task.prompt, n_results=3)
+                if rag_chunks:
+                    context_parts.append("[참고 문서]\n" + "\n\n".join(rag_chunks))
+                    path_suffix += "+rag"
+            if getattr(routing, "requires_mcp", False):
+                mcp = MCPClient()
+                try:
+                    tool_result = await mcp.call_tool("mock://local", "list_files", {})
+                    context_parts.append("[도구 호출 결과]\n" + str(tool_result))
+                    path_suffix += "+mcp"
+                except Exception as e:
+                    context_parts.append(f"[도구 호출 실패]\n{e}")
+
+        # enriched task 생성 (원본 TaskRequest를 변경하지 않음)
+        enriched_prompt = task.prompt
+        if context_parts:
+            enriched_prompt = task.prompt + "\n\n" + "\n\n".join(context_parts)
+
+        enriched_task = TaskRequest(**task.model_dump())
+        enriched_task.prompt = enriched_prompt
+
         # ── 1단계: Draft 3종 비동기 병렬 실행 ──
-        drafts = await run_all_drafts(task)
+        drafts = await run_all_drafts(enriched_task)
         for draft in drafts:
-            _log_output(logger, draft, task.prompt)
+            _log_output(logger, draft, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(draft)
 
         # ── 2단계: Critic이 draft 비교 분석 ──
         critic = CriticAgent()
-        critique = await critic.critique(drafts, original_prompt=task.prompt)
-        _log_output(logger, critique, task.prompt)
+        critique = await critic.critique(drafts, original_prompt=enriched_task.prompt)
+        _log_output(logger, critique, enriched_task.prompt, path="moa" + path_suffix)
         all_outputs.append(critique)
 
         # ── 3단계: Synthesizer가 최종 결과 생성 ──
         synthesizer = SynthesizerAgent()
-        final = await synthesizer.synthesize(drafts, critique, original_prompt=task.prompt)
-        _log_output(logger, final, task.prompt)
+        final = await synthesizer.synthesize(drafts, critique, original_prompt=enriched_task.prompt)
+        _log_output(logger, final, enriched_task.prompt, path="moa" + path_suffix)
         all_outputs.append(final)
 
         # ── 4단계: Judge가 품질 판정 ──
@@ -77,7 +115,7 @@ class MOAExecutor:
         decision = None
 
         for loop in range(MAX_REWRITE_LOOPS + 1):
-            decision = await judge.judge(task, current_output)
+            decision = await judge.judge(enriched_task, current_output)
             # Judge 호출도 trace에 기록 (AgentOutput 생성)
             judge_output = AgentOutput(
                 agent_name="judge",
@@ -87,7 +125,7 @@ class MOAExecutor:
                 completion_tokens=0,
                 latency_ms=0.0,
             )
-            _log_output(logger, judge_output, task.prompt)
+            _log_output(logger, judge_output, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(judge_output)
 
             if decision.decision == "pass":
@@ -99,7 +137,7 @@ class MOAExecutor:
                 # ── 5단계: Rewrite Agent가 피드백 반영 ──
                 rewriter = RewriteAgent()
                 current_output = await rewriter.rewrite(current_output, decision)
-                _log_output(logger, current_output, task.prompt)
+                _log_output(logger, current_output, enriched_task.prompt, path="moa" + path_suffix)
                 all_outputs.append(current_output)
             else:
                 # 최대 rewrite 횟수 초과 → 마지막 결과 채택
@@ -114,6 +152,7 @@ def build_moa_summary(
     task: TaskRequest,
     final_output: str,
     logger: TraceLogger,
+    path: str = "moa",
 ) -> RunSummary:
     """MOA 실행 결과를 RunSummary로 집계."""
     traces = [TraceRecord(**record) for record in logger.records]
@@ -125,7 +164,7 @@ def build_moa_summary(
     return RunSummary(
         run_id=run_id,
         task_id=task.task_id,
-        path="moa",
+        path=path,
         total_tokens=total_tokens,
         total_cost=round(total_cost, 6),
         total_latency_ms=round(total_latency, 2),

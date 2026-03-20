@@ -77,7 +77,7 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 
 ## 사용 안내
 
-1. **항상 이 파일(`claude.md`)을 첨부**
+1. **항상 이 파일(`AGENTS.md`)을 첨부**
 2. **현재 주차의 `weekN_plan.md` + `weekN_implement.md`를 함께 첨부**
 3. 이전 주차가 ✅ 완료인지 확인 후 작업 시작
 4. 세부 스택·구조·평가 정보가 필요하면 `refs/` 파일 참조

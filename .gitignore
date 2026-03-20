@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 data/traces/
 data/outputs/
+data/chroma/
 .venv/
 *.egg-info/
 dist/

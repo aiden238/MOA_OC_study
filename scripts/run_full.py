@@ -78,18 +78,22 @@ async def run_moa_path(
     routing: RoutingDecision | None = None,
 ) -> tuple[str, list[AgentOutput]]:
     """moa 경로 — Draft×3 → Critic → Synthesizer → Judge → (Rewrite)."""
+    start_index = len(logger.records)
     executor = MOAExecutor()
     final_text, all_outputs = await executor.execute(task, logger, routing=routing)
 
-    # 각 에이전트 출력을 비용 트래커에 등록
-    for output in all_outputs:
+    # 이번 case에서 추가된 trace만 비용 트래커에 등록
+    new_records = logger.records[start_index:]
+    for record in new_records:
         cost_tracker.add(
-            model=output.model,
-            prompt_tokens=output.prompt_tokens,
-            completion_tokens=output.completion_tokens,
-            path="moa",
-            agent_name=output.agent_name,
-            operation_type="llm_completion",
+            model=record["model"],
+            prompt_tokens=record["prompt_tokens"],
+            completion_tokens=record["completion_tokens"],
+            path=record["path"],
+            agent_name=record["agent_name"],
+            operation_type=record.get("operation_type", "llm_completion"),
+            metadata=record.get("metadata", {}),
+            cost_override=record.get("cost_estimate", 0.0),
         )
 
     return final_text, all_outputs
@@ -153,6 +157,7 @@ async def run_pipeline(
 
     for case in cases:
         task = case_to_task(case)
+        start_index = len(logger.records)
 
         # 경로 결정 (강제 지정 or Router 자동)
         if force_path:
@@ -174,13 +179,46 @@ async def run_pipeline(
         else:
             final_text, outputs = await run_moa_path(task, logger, cost_tracker, routing=decision)
 
+        case_records = logger.records[start_index:]
+        actual_path = case_records[-1]["path"] if case_records else decision.selected_path
+        rag_records = [
+            record for record in case_records
+            if record.get("operation_type") == "rag"
+        ]
+        retrieval_record = next(
+            (record for record in reversed(rag_records) if record.get("metadata", {}).get("stage") == "retrieval"),
+            None,
+        )
+        context_build_record = next(
+            (record for record in reversed(rag_records) if record.get("metadata", {}).get("stage") == "context_build"),
+            None,
+        )
+
+        evaluation_context = {}
+        context_metadata = {
+            "routing": {
+                "requires_rag": decision.requires_rag,
+                "requires_mcp": decision.requires_mcp,
+                "rag_query_hint": decision.rag_query_hint,
+                "mcp_intent": decision.mcp_intent,
+                "preferred_server": decision.preferred_server,
+                "preferred_tool": decision.preferred_tool,
+            }
+        }
+        if retrieval_record is not None:
+            context_metadata["rag_retrieval"] = retrieval_record.get("metadata", {})
+        if context_build_record is not None:
+            context_metadata["rag"] = context_build_record.get("metadata", {})
+            evaluation_context["retrieval_context"] = context_build_record.get("output_text", "")
+            evaluation_context["selected_chunks"] = context_build_record.get("metadata", {}).get("selected_chunks", [])
+
         # 결과 저장
         result = {
             "case_id": task.task_id,
             "task_type": task.task_type,
             "prompt": task.prompt,
             "output": final_text,
-            "path": decision.selected_path,
+            "path": actual_path,
             "routing_reason": decision.reason,
             "routing_confidence": decision.confidence,
             "agent_count": len(outputs),
@@ -188,20 +226,11 @@ async def run_pipeline(
             "prompt_tokens": sum(o.prompt_tokens for o in outputs),
             "completion_tokens": sum(o.completion_tokens for o in outputs),
             "latency_ms": round(sum(o.latency_ms for o in outputs), 2),
-            "cost_estimate": round(sum(o.cost_estimate for o in outputs), 6),
+            "cost_estimate": round(sum(record["cost_estimate"] for record in case_records), 6),
             "constraints": task.constraints,
             "evaluation": {},
-            "evaluation_context": {},
-            "context_metadata": {
-                "routing": {
-                    "requires_rag": decision.requires_rag,
-                    "requires_mcp": decision.requires_mcp,
-                    "rag_query_hint": decision.rag_query_hint,
-                    "mcp_intent": decision.mcp_intent,
-                    "preferred_server": decision.preferred_server,
-                    "preferred_tool": decision.preferred_tool,
-                }
-            },
+            "evaluation_context": evaluation_context,
+            "context_metadata": context_metadata,
         }
         save_full_output(result, output_dir)
 

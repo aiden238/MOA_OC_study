@@ -37,3 +37,9 @@ MAX_RETRIES: int = int(_get_env("MAX_RETRIES", "3"))                 # API 재�
 TRACE_DIR: Path = PROJECT_ROOT / _get_env("TRACE_DIR", "data/traces")          # 실행 추적 로그 저장
 OUTPUT_DIR: Path = PROJECT_ROOT / _get_env("OUTPUT_DIR", "data/outputs")       # 실행 결과 저장
 BENCHMARK_DIR: Path = PROJECT_ROOT / _get_env("BENCHMARK_DIR", "data/benchmarks")  # 벤치마크 데이터
+RAG_DOCS_DIR: Path = PROJECT_ROOT / _get_env("RAG_DOCS_DIR", "data/rag_docs")       # RAG 원본 문서
+CHROMA_DIR: Path = PROJECT_ROOT / _get_env("CHROMA_DIR", "data/chroma")             # Chroma 영속 저장소
+
+# ── RAG 설정 ──
+EMBEDDING_MODEL: str = _get_env("EMBEDDING_MODEL", "text-embedding-3-small")
+RAG_COLLECTION_NAME: str = _get_env("RAG_COLLECTION_NAME", "rag_docs")

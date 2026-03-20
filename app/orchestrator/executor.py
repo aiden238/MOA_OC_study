@@ -35,6 +35,7 @@ def _log_output(logger: TraceLogger, output: AgentOutput, input_prompt: str, pat
         latency_ms=output.latency_ms,
         cost_estimate=output.cost_estimate,
         path=path,
+        operation_type="llm_completion",
     )
 
 
@@ -58,7 +59,8 @@ class MOAExecutor:
             (최종 출력 텍스트, 모든 에이전트 출력 리스트)
         """
         # 지연 import로 순환 의존성 방지
-        from app.rag.retriever import SimpleRetriever
+        from app.rag.context_builder import ContextBuilder
+        from app.rag.retriever import ChromaRetriever, SimpleRetriever
         from app.mcp_client.client import MCPClient
 
         all_outputs: list[AgentOutput] = []
@@ -68,11 +70,103 @@ class MOAExecutor:
         path_suffix = ""
         if routing is not None:
             if getattr(routing, "requires_rag", False):
-                retriever = SimpleRetriever()
-                # 기본적으로 task.prompt를 질의어로 사용
-                rag_chunks = retriever.query(task.prompt, n_results=3)
-                if rag_chunks:
-                    context_parts.append("[참고 문서]\n" + "\n\n".join(rag_chunks))
+                rag_query = getattr(routing, "rag_query_hint", None) or task.prompt
+                rag_items = []
+                fallback_reason = None
+                retriever_name = "ChromaRetriever"
+                embedding_model = "text-embedding-3-small"
+
+                try:
+                    retriever = ChromaRetriever()
+                    index_info = await retriever.ensure_indexed()
+                    embedding_model = getattr(retriever.embedder, "model_name", embedding_model)
+                    if index_info.get("indexed_count", 0) > 0:
+                        logger.log(
+                            agent_name="rag_retriever",
+                            model=embedding_model,
+                            input_prompt=f"index:{retriever.collection_name}",
+                            output_text=f"indexed {index_info['indexed_count']} chunks",
+                            prompt_tokens=index_info.get("embedding_tokens", 0),
+                            completion_tokens=0,
+                            latency_ms=0.0,
+                            cost_estimate=index_info.get("embedding_cost_estimate", 0.0),
+                            path="moa",
+                            operation_type="rag",
+                            metadata={
+                                "stage": "indexing",
+                                "indexed_count": index_info.get("indexed_count", 0),
+                                "source_count": index_info.get("source_count", 0),
+                            },
+                        )
+                    rag_items = await retriever.query_items(rag_query, n_results=5)
+                except Exception as exc:
+                    fallback_reason = str(exc)
+                    retriever_name = "SimpleRetriever"
+                    retriever = SimpleRetriever.from_directory()
+                    rag_items = retriever.query_items(rag_query, n_results=5)
+                    embedding_model = getattr(retriever, "collection_name", "simple-retriever")
+
+                logger.log(
+                    agent_name="rag_retriever",
+                    model=embedding_model,
+                    input_prompt=rag_query,
+                    output_text="",
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    latency_ms=0.0,
+                    cost_estimate=0.0,
+                    path="moa",
+                    operation_type="rag",
+                    metadata={
+                        "stage": "retrieval",
+                        "retriever": retriever_name,
+                        "query": rag_query,
+                        "hit_count": len(rag_items),
+                        "fallback_reason": fallback_reason,
+                        "results": [
+                            {
+                                "doc_id": item.get("doc_id"),
+                                "source_path": item.get("source_path"),
+                                "chunk_id": item.get("chunk_id"),
+                                "raw_distance": item.get("raw_distance"),
+                                "normalized_relevance": item.get("normalized_relevance"),
+                            }
+                            for item in rag_items
+                        ],
+                    },
+                )
+
+                eligible_items = [
+                    item for item in rag_items
+                    if item.get("normalized_relevance", 0.0) >= 0.20
+                ]
+                builder = ContextBuilder(injection_top_k=3, max_context_tokens=1200)
+                rag_context, context_meta = builder.build(eligible_items)
+                rag_hit = bool(rag_context)
+
+                logger.log(
+                    agent_name="rag_retriever",
+                    model=embedding_model,
+                    input_prompt=rag_query,
+                    output_text=rag_context,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    latency_ms=0.0,
+                    cost_estimate=0.0,
+                    path="moa+rag" if rag_hit else "moa",
+                    operation_type="rag",
+                    metadata={
+                        "stage": "context_build",
+                        "retriever": retriever_name,
+                        "rag_miss": not rag_hit,
+                        "fallback_reason": fallback_reason,
+                        "query": rag_query,
+                        **context_meta,
+                    },
+                )
+
+                if rag_hit:
+                    context_parts.append("[참고 문서]\n" + rag_context)
                     path_suffix += "+rag"
             if getattr(routing, "requires_mcp", False):
                 mcp = MCPClient()

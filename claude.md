@@ -23,7 +23,7 @@
 | 3 | UI 개발 금지 (CLI + JSON 로그만) |
 | 4 | 도메인 데이터 지양 (범용 벤치마크만) |
 | 5 | RAG·MCP는 6주차에만 (그 전에 도입 금지) |
-| 6 | 한 주에 3커밋 초과 금지 |
+| 6 | 주간 커밋 횟수 제한 없음 |
 | 7 | 새 의존성 추가 시 라이선스 확인 필수 (MIT / Apache 2.0만) |
 | 8 | 문서 없이 코드만 커밋하지 않기 (문서가 기준, 코드가 증명) |
 
@@ -49,6 +49,7 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 | 4주차 | ✅ 완료 | Draft×3, Critic, Synthesizer, run_moa.py | 2026-03-12 |
 | 5주차 | ✅ 완료 | Router, Judge/Rewrite, CostTracker, run_full.py | 2026-03-13 |
 | 6주차 | ✅ 완료 | RAG, MCP, compare_runs.py, 회고 | 2026-03-14 |
+| 7주차 | 🟡 진행 중 | C7-1 스캐폴딩, C7-2 Chroma RAG, C7-3 착수 | - |
 
 ---
 
@@ -72,6 +73,8 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 | 4주차 | `week4_plan.md` | `week4_implement.md` |
 | 5주차 | `week5_plan.md` | `week5_implement.md` |
 | 6주차 | `week6_plan.md` | `week6_implement.md` |
+| 7주차 | `week7_plan.md` | `week7_implement.md` |
+| 8주차 | `week8_plan.md` | `-` |
 
 ---
 

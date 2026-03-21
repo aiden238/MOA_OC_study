@@ -171,10 +171,55 @@ class MOAExecutor:
             if getattr(routing, "requires_mcp", False):
                 mcp = MCPClient()
                 try:
-                    tool_result = await mcp.call_tool("mock://local", "list_files", {})
-                    context_parts.append("[도구 호출 결과]\n" + str(tool_result))
+                    tool_result = await mcp.execute_filesystem_lookup(
+                        task.prompt,
+                        preferred_tool=getattr(routing, "preferred_tool", None),
+                    )
+                    normalized_summary = tool_result["normalized_result_summary"]
+                    logger.log(
+                        agent_name="mcp_filesystem",
+                        model="filesystem",
+                        input_prompt=task.prompt,
+                        output_text=normalized_summary,
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        latency_ms=tool_result["latency_ms"],
+                        cost_estimate=0.0,
+                        path="moa+mcp",
+                        operation_type="mcp_tool",
+                        metadata={
+                            "server_name": tool_result["server_name"],
+                            "tool_name": tool_result["tool_name"],
+                            "args": tool_result["args"],
+                            "success": tool_result["success"],
+                            "available_tools": tool_result.get("available_tools", []),
+                            "normalized_result_summary": normalized_summary,
+                            "result_text": tool_result.get("result_text", ""),
+                        },
+                    )
+                    context_parts.append("[도구 호출 결과]\n" + normalized_summary)
                     path_suffix += "+mcp"
                 except Exception as e:
+                    logger.log(
+                        agent_name="mcp_filesystem",
+                        model="filesystem",
+                        input_prompt=task.prompt,
+                        output_text="",
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        latency_ms=0.0,
+                        cost_estimate=0.0,
+                        path="moa",
+                        operation_type="mcp_tool",
+                        metadata={
+                            "server_name": getattr(routing, "preferred_server", "filesystem"),
+                            "tool_name": getattr(routing, "preferred_tool", None),
+                            "args": {},
+                            "success": False,
+                            "fallback_reason": str(e),
+                            "normalized_result_summary": "",
+                        },
+                    )
                     context_parts.append(f"[도구 호출 실패]\n{e}")
 
         # enriched task 생성 (원본 TaskRequest를 변경하지 않음)

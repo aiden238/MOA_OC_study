@@ -24,6 +24,7 @@ from app.agents.base_agent import BaseAgent
 from app.core.config import OUTPUT_DIR
 from app.core.cost_tracker import CostTracker
 from app.core.logger import TraceLogger, generate_run_id
+from app.eval.rubric import evaluate_single
 from app.orchestrator.executor import MOAExecutor
 from app.orchestrator.router import Router, RoutingDecision
 from app.schemas.agent_io import AgentOutput
@@ -138,6 +139,7 @@ async def run_pipeline(
     case_id: str | None = None,
     force_path: str | None = None,
     cost_report: bool = False,
+    evaluate: bool = False,
     output_dir: Path | None = None,
 ):
     """전체 파이프라인 실행."""
@@ -185,6 +187,10 @@ async def run_pipeline(
             record for record in case_records
             if record.get("operation_type") == "rag"
         ]
+        mcp_records = [
+            record for record in case_records
+            if record.get("operation_type") == "mcp_tool"
+        ]
         retrieval_record = next(
             (record for record in reversed(rag_records) if record.get("metadata", {}).get("stage") == "retrieval"),
             None,
@@ -193,6 +199,7 @@ async def run_pipeline(
             (record for record in reversed(rag_records) if record.get("metadata", {}).get("stage") == "context_build"),
             None,
         )
+        mcp_record = next((record for record in reversed(mcp_records)), None)
 
         evaluation_context = {}
         context_metadata = {
@@ -211,6 +218,25 @@ async def run_pipeline(
             context_metadata["rag"] = context_build_record.get("metadata", {})
             evaluation_context["retrieval_context"] = context_build_record.get("output_text", "")
             evaluation_context["selected_chunks"] = context_build_record.get("metadata", {}).get("selected_chunks", [])
+        if mcp_record is not None:
+            context_metadata["mcp"] = mcp_record.get("metadata", {})
+            evaluation_context["tool_trace"] = {
+                "server_name": mcp_record.get("metadata", {}).get("server_name"),
+                "tool_name": mcp_record.get("metadata", {}).get("tool_name"),
+                "args": mcp_record.get("metadata", {}).get("args", {}),
+                "success": mcp_record.get("metadata", {}).get("success"),
+            }
+            evaluation_context["tool_result_summary"] = mcp_record.get("metadata", {}).get("normalized_result_summary", "")
+
+        evaluation = {}
+        if evaluate:
+            evaluation = await evaluate_single(
+                prompt=task.prompt,
+                output=final_text,
+                constraints=task.constraints,
+                path=actual_path,
+                evaluation_context=evaluation_context,
+            )
 
         # 결과 저장
         result = {
@@ -228,7 +254,7 @@ async def run_pipeline(
             "latency_ms": round(sum(o.latency_ms for o in outputs), 2),
             "cost_estimate": round(sum(record["cost_estimate"] for record in case_records), 6),
             "constraints": task.constraints,
-            "evaluation": {},
+            "evaluation": evaluation,
             "evaluation_context": evaluation_context,
             "context_metadata": context_metadata,
         }
@@ -261,6 +287,7 @@ def parse_args() -> argparse.Namespace:
         help="경로 강제 지정 (Router 무시)",
     )
     parser.add_argument("--cost-report", action="store_true", help="비용 요약 출력")
+    parser.add_argument("--evaluate", action="store_true", help="LLM Judge 평가를 함께 실행")
     return parser.parse_args()
 
 
@@ -273,6 +300,7 @@ def main():
         case_id=args.case_id,
         force_path=args.force_path,
         cost_report=args.cost_report,
+        evaluate=args.evaluate,
     ))
 
 

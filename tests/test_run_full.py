@@ -19,7 +19,7 @@ from app.core.logger import TraceLogger, generate_run_id
 from app.orchestrator.router import Router, RoutingDecision, rule_based_route
 from app.schemas.agent_io import AgentOutput, JudgeDecision
 from app.schemas.task import TaskRequest
-from scripts.run_full import run_single_path, run_moa_path, save_full_output
+from scripts.run_full import run_single_path, run_moa_path, save_full_output, run_pipeline
 
 
 def _mock_output(name: str, content: str = "mock") -> AgentOutput:
@@ -135,6 +135,43 @@ class TestRunFullPipeline:
         assert loaded["evaluation"] == {}
         assert loaded["evaluation_context"] == {}
         assert loaded["context_metadata"] == {}
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_with_evaluation(self, tmp_path):
+        """--evaluate 경로에서 evaluation이 비어 있지 않게 저장되는지 확인."""
+        cases = [{
+            "id": "sum-001",
+            "prompt": "간단 요약",
+            "type": "summarize",
+            "constraints": {"difficulty": "low"},
+            "metadata": {},
+        }]
+
+        mock_single_output = _mock_output("single_baseline", "단일 결과")
+        mock_scores = {
+            "clarity": 4,
+            "structure": 4,
+            "constraint_following": 5,
+            "usefulness": 4,
+            "avg_score": 4.25,
+            "path": "single",
+        }
+
+        with patch("scripts.run_full.BaseAgent") as MockSingleAgent, \
+             patch("scripts.run_full.evaluate_single", new_callable=AsyncMock) as mock_evaluate:
+            MockSingleAgent.return_value = AsyncMock(run=AsyncMock(return_value=mock_single_output))
+            mock_evaluate.return_value = mock_scores
+
+            await run_pipeline(
+                cases,
+                evaluate=True,
+                output_dir=tmp_path,
+            )
+
+        output_files = list(tmp_path.glob("full_*.json"))
+        assert len(output_files) == 1
+        payload = json.loads(output_files[0].read_text(encoding="utf-8"))
+        assert payload["evaluation"] == mock_scores
 
     def test_router_single_case(self):
         """summarize + low difficulty → single 경로로 라우팅되는지 확인."""

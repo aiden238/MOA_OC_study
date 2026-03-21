@@ -5,7 +5,7 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 8주차 |
-| **상태** | 🟡 계획 수립 / 구현 대기 |
+| **상태** | 🟡 W8-1/W8-2 1차 반영 / W8-0 실측 대기 |
 | **작성일** | 2026-04-18 |
 | **목표** | C7-3 실제 MCP 연결을 완료하고, Week 7의 평가 누락·RAG 실측 부재·문서 정합성 문제를 보정한다 |
 
@@ -30,14 +30,17 @@
 - `run_full.py`는 `routing`을 실제로 `MOAExecutor.execute(..., routing=...)`까지 전달한다.
 - `TraceLogger`, `TraceRecord`, `CostTracker`, `Comparator`, `rubric.py`는 Week 7 확장 구조를 일부 반영했다.
 - RAG는 `ChromaRetriever` + `OpenAIEmbedder` 기본 경로와 `SimpleRetriever` 폴백 경로를 모두 가진다.
-- 전체 테스트는 현재 `132 passed` 상태다.
+- `run_full.py`는 `--evaluate` 플래그로 path-aware 평가를 저장할 수 있다.
+- Filesystem MCP 클라이언트는 공식 `mcp` SDK + `stdio` 기반으로 1차 통합되었다.
+- 전체 테스트는 현재 `137 passed` 상태다.
 - Windows 환경에서 `node --version`, `npx.cmd --version`은 통과한다.
 
 ### 아직 미완료인 것
 
-- `run_full.py`는 `evaluation_context`를 만들지만 `evaluation`은 아직 `{}`로 저장한다.
+- `run_full.py`는 `evaluation_context`를 만들고, `--evaluate` 실행 시 실제 `evaluation`을 저장한다.
 - `data/outputs/`에 실환경 `moa+rag` 또는 `moa+mcp` 실행 산출물이 없다.
-- MCP는 아직 `mock://local` 기반이며 공식 `mcp` SDK / stdio / whitelist / session manager가 없다.
+- `.env`와 `OPENAI_API_KEY`가 없어 W8-0의 실환경 RAG 실행 증거를 아직 남기지 못했다.
+- MCP는 코드상 실제화되었지만, full pipeline 기준 실측 output/trace 산출은 아직 없다.
 - `app/orchestrator/planner.py`는 없는데 문서는 여전히 Planner를 핵심 단계로 서술한다.
 - `week7_implement.md`는 플랫폼형 UI 명세라기보다 웹 래퍼 초안에 가깝다.
 

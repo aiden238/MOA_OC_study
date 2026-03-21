@@ -1,325 +1,153 @@
 # Week 7 — Final Check & Test Report
 
 > 작성일: 2026-04-18  
-> 목적: 1~6주차 전체 구현 상태 점검 + 실제 테스트에 필요한 사항 정리
+> 목적: Week 7 종료 시점 기준으로 실제 코드 상태, 테스트 상태, 미완료 항목을 정리한다.
 
 ---
 
-## 1. 전체 테스트 결과 요약
+## 1. 전체 테스트 결과
 
-```
-pytest tests/ -v
-====== 116 passed in 0.34s ======
+```text
+python -m pytest tests -q
+137 passed
 ```
 
-| 테스트 파일 | 테스트 수 | 상태 | 대상 모듈 |
-|------------|----------|------|----------|
-| `test_logger.py` | 8 | ✅ 전체 통과 | config, logger, timer |
-| `test_schemas.py` | 10 | ✅ 전체 통과 | task.py, agent_io.py, trace.py |
-| `test_base_agent.py` | 7 | ✅ 전체 통과 | base_agent.py |
-| `test_draft_diversity.py` | 6 | ✅ 전체 통과 | draft_agent.py |
-| `test_critic.py` | 4 | ✅ 전체 통과 | critic_agent.py |
-| `test_synthesizer.py` | 4 | ✅ 전체 통과 | synthesizer.py |
-| `test_judge.py` | 11 | ✅ 전체 통과 | judge_agent.py, rewrite_agent.py |
-| `test_eval.py` | 10 | ✅ 전체 통과 | metrics.py, rubric.py |
-| `test_router.py` | 14 | ✅ 전체 통과 | router.py, retry_policy.py |
-| `test_pipeline_single.py` | 9 | ✅ 전체 통과 | run_single.py |
-| `test_pipeline_moa.py` | 7 | ✅ 전체 통과 | executor.py, run_moa.py |
-| `test_rag.py` | 3 | ✅ 전체 통과 | chunker, embedder, retriever |
-| `test_run_full.py` | 8 | ✅ 전체 통과 | run_full.py (Mock 시범 실행) |
+핵심 변화:
+
+- 기존 116개 기준 문서는 더 이상 최신 상태가 아니다.
+- 현재는 Week 7 확장 테스트와 MCP/Evaluation 테스트가 추가되어 **137개 테스트**가 통과한다.
+
+### 주요 추가 검증 범위
+
+- `run_full.py`의 `routing` 전달
+- `evaluation_context`와 `--evaluate` 저장 경로
+- `Comparator`의 baseline / rag / mcp 그룹 비교
+- `ChromaRetriever` 경로와 RAG 폴백 경로
+- 공식 `mcp` SDK 기반 Filesystem MCP 클라이언트
+- MCP whitelist / read-only 정책 / executor 통합
 
 ---
 
-## 2. 주차별 구현 상태 점검
+## 2. Week 7 구현 상태 판정
 
-### 1주차 — 프로젝트 인프라
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| 전역 설정 | `app/core/config.py` | ✅ .env 로딩, 환경변수 관리 |
-| JSON 트레이스 로거 | `app/core/logger.py` | ✅ run_id 생성, 레코드 기록, JSON 저장 |
-| 레이턴시 타이머 | `app/core/timer.py` | ✅ sync/async measure_time 데코레이터 |
-| 프로젝트 문서 | `docs/00~02` | ✅ 목표, 범위, 아키텍처 명세 |
-
-### 2주차 — 스키마 & 에이전트 기반
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| TaskRequest / TaskPlan | `app/schemas/task.py` | ✅ pydantic v2 스키마 |
-| AgentInput / AgentOutput | `app/schemas/agent_io.py` | ✅ LLM 입출력 정형화 |
-| TraceRecord / RunSummary | `app/schemas/trace.py` | ✅ 실행 추적 스키마 |
-| BaseAgent | `app/agents/base_agent.py` | ✅ httpx + OpenAI API 래퍼 |
-| 시스템 프롬프트 | `app/prompts/*.md` | ✅ 역할별 8개 프롬프트 파일 |
-
-### 3주차 — 벤치마크 & 평가
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| 벤치마크 v1 | `data/benchmarks/v1.json` | ✅ 12건 (4유형 × 3난이도) |
-| Single 실행기 | `scripts/run_single.py` | ✅ CLI + 결과 JSON 저장 |
-| 평가 메트릭 | `app/eval/metrics.py` | ✅ 품질·시스템 지표 |
-| LLM 루브릭 | `app/eval/rubric.py` | ✅ LLM 기반 자동 평가 |
-| 재시도 정책 | `app/orchestrator/retry_policy.py` | ✅ 지수 백오프 + 폴백 |
-
-### 4주차 — MOA 파이프라인
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| Draft Agent × 3 | `app/agents/draft_agent.py` | ✅ analytical/creative/structured |
-| Critic Agent | `app/agents/critic_agent.py` | ✅ 비교 분석 |
-| Synthesizer | `app/orchestrator/synthesizer.py` | ✅ 최종 종합 |
-| MOA Executor | `app/orchestrator/executor.py` | ✅ 파이프라인 실행 엔진 |
-| MOA 실행기 | `scripts/run_moa.py` | ✅ CLI + 비교 출력 |
-
-### 5주차 — Router & Judge
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| Router | `app/orchestrator/router.py` | ✅ 2단계 하이브리드 (Rule + LLM) |
-| Judge Agent | `app/agents/judge_agent.py` | ✅ pass/rewrite/escalate 판정 |
-| Rewrite Agent | `app/agents/rewrite_agent.py` | ✅ 피드백 기반 개선 |
-| CostTracker | `app/core/cost_tracker.py` | ✅ 토큰·비용 집계 |
-| Full Pipeline | `scripts/run_full.py` | ✅ Router → single/moa 자동 분기 |
-
-### 6주차 — RAG & MCP
-
-| 산출물 | 파일 | 상태 |
-|--------|------|------|
-| Chunker | `app/rag/chunker.py` | ✅ 고정 크기 문자 분할 |
-| Embedder | `app/rag/embedder.py` | ✅ SHA256 해시 기반 (플레이스홀더) |
-| Retriever | `app/rag/retriever.py` | ✅ 단어 중복 기반 검색 |
-| MCP Client | `app/mcp_client/client.py` | ✅ mock:// 시뮬레이션 지원 |
-| Router 확장 | `app/orchestrator/router.py` | ✅ requires_rag / requires_mcp 플래그 |
-| Executor 확장 | `app/orchestrator/executor.py` | ✅ RAG/MCP 컨텍스트 주입 |
-| Comparator | `app/eval/comparator.py` | ✅ 경로별 비교 분석 |
-| compare_runs | `scripts/compare_runs.py` | ✅ CLI 비교 도구 |
-| 샘플 문서 | `data/rag_docs/doc1~5.txt` | ✅ 한국어 5개 문서 |
+| 항목 | 판정 | 근거 |
+|------|------|------|
+| C7-1 실행선 정리 | ✅ 완료 | `routing` 전달, trace/cost/comparator 구조 반영 |
+| C7-1 평가 인프라 | ✅ 1차 완료 | `--evaluate` 플래그로 실제 `evaluation` 저장 가능 |
+| C7-2 Chroma RAG 코드 | ✅ 완료 | `ChromaRetriever` + `OpenAIEmbedder` + 폴백 구조 반영 |
+| C7-2 실환경 증거 | ⏳ 미완료 | `.env`와 `OPENAI_API_KEY` 부재로 실측 output/trace 없음 |
+| C7-3 실제 MCP 코드 | ✅ 1차 완료 | 공식 `mcp` SDK + stdio + Filesystem MCP 연결 |
+| C7-3 실환경 full run | ⏳ 미완료 | 실제 `moa+mcp` output/trace 파일은 아직 없음 |
+| C7-3 UI 문서 정렬 | ✅ 완료 | `week7_implement.md`를 플랫폼 UI 계약 문서로 재작성 |
 
 ---
 
-## 3. 이번 세션(Week 7)에서 수행한 작업
+## 3. 현재 코드 기준 핵심 상태
 
-### 3-1. Mock 기반 시범 실행 테스트 작성 (`tests/test_run_full.py`)
+### 3-1. LLM / 평가
 
-API 키 없이 전체 파이프라인 흐름을 검증하는 8개 테스트를 작성:
+- 기본 모델: `gpt-4o-mini`
+- 대체 가격표: `gpt-4o`
+- 평가기는 `app/eval/rubric.py`에서 path-aware 추가 항목을 지원한다.
+- `scripts/run_full.py --evaluate` 실행 시 결과 JSON의 `evaluation`이 실제 채워진다.
 
-| 테스트명 | 검증 내용 |
-|---------|----------|
-| `test_single_path` | single 경로 BaseAgent 단일 호출 동작 |
-| `test_moa_path` | moa 경로 Draft×3 → Critic → Synth → Judge 흐름 |
-| `test_save_full_output` | 결과 JSON 파일 저장/로드 |
-| `test_router_single_case` | summarize + low difficulty → single 라우팅 |
-| `test_router_moa_case` | ideate → moa 라우팅 |
-| `test_router_rag_case` | source:rag_docs → requires_rag=True |
-| `test_router_mcp_case` | MCP 키워드 → requires_mcp=True |
-| `test_full_pipeline_3_cases` | sum-001(single), ide-001/crw-001(moa) 3건 E2E |
+### 3-2. RAG
 
-### 3-2. 전체 테스트 재실행
+- 기본 경로: `ChromaRetriever` + `OpenAIEmbedder`
+- 폴백 경로: `SimpleRetriever`
+- relevance 정규화와 `rag_miss` 기준 존재
+- trace에 retrieval/context metadata 기록
 
-- 기존 108개 + 새 8개 = **총 116개 테스트 모두 통과**
-- 실행 시간: 0.34초
+### 3-3. MCP
 
----
+- 공식 `mcp` Python SDK 사용
+- `stdio` transport 사용
+- 공식 filesystem 서버를 `npx`로 실행
+- whitelist 경로 검증, read-only tool 제한, fallback 기록 반영
 
-## 4. 실제 API 테스트에 필요한 사항
+### 3-4. 문서/구조 괴리
 
-### 4-1. 필요한 API 키
-
-현재 코드베이스는 **OpenAI API만 사용**합니다.
-
-| 항목 | 값 | 설명 |
-|------|-----|------|
-| **API 키** | `OPENAI_API_KEY` | OpenAI 플랫폼에서 발급 |
-| **기본 모델** | `gpt-4o-mini` | 1~5주차 단일 모델로 고정 |
-| **대체 모델** | `gpt-4o` | 비용이 높지만 품질 비교용 |
-| **API 엔드포인트** | `https://api.openai.com/v1/chat/completions` | `base_agent.py`에 하드코딩 |
-
-### 4-2. API 키 설정 방법
-
-```bash
-# 1. 프로젝트 루트에 .env 파일 생성
-cp env.example .env
-
-# 2. .env 파일 편집 — API 키 입력
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxx
-DEFAULT_MODEL=gpt-4o-mini
-```
-
-> **주의:** `.env` 파일은 `.gitignore`에 포함되어 있어 커밋되지 않습니다.
-
-### 4-3. API 키 발급 방법
-
-1. https://platform.openai.com 접속 → 로그인
-2. 좌측 메뉴에서 **API keys** 선택
-3. **Create new secret key** 클릭
-4. 키를 복사하여 `.env` 파일에 붙여넣기
-
-### 4-4. 비용 예상
-
-| 모델 | 입력 단가 | 출력 단가 | 12건 벤치마크 예상 비용 |
-|------|----------|----------|---------------------|
-| `gpt-4o-mini` | $0.15 / 1M tokens | $0.60 / 1M tokens | ~$0.01~0.05 |
-| `gpt-4o` | $2.50 / 1M tokens | $10.00 / 1M tokens | ~$0.20~0.80 |
-
-- Single 경로: 에이전트 1회 호출
-- MOA 경로: 에이전트 5~7회 호출 (Draft×3 + Critic + Synth + Judge + Rewrite)
-- 12건 전체 실행 시 gpt-4o-mini 기준 약 **$0.05 이하**
-
-### 4-5. 실제 실행 명령어
-
-```bash
-# 1) 단일 케이스 테스트
-python scripts/run_full.py --case-id sum-001
-
-# 2) 전체 12건 실행
-python scripts/run_full.py --cost-report
-
-# 3) 경로 강제 지정
-python scripts/run_full.py --case-id ide-001 --force-path moa
-
-# 4) Single baseline만 실행
-python scripts/run_single.py
-
-# 5) MOA 파이프라인만 실행
-python scripts/run_moa.py
-
-# 6) 결과 비교
-python scripts/compare_runs.py data/outputs/ --format table
-```
-
-### 4-6. 향후 멀티모델 테스트 시 필요 사항
-
-6주차 명세에 따르면 멀티모델 실험이 가능하도록 설계되어 있지만, 현재 코드는 `base_agent.py`에서 OpenAI API만 호출합니다. 다른 모델을 테스트하려면:
-
-| 모델 | 필요 API 키 | 환경변수 | 추가 구현 필요 |
-|------|------------|---------|--------------|
-| Claude 3.5 Haiku | Anthropic API Key | `ANTHROPIC_API_KEY` | `base_agent.py`에 Anthropic 엔드포인트 추가 |
-| Gemini | Google AI API Key | `GOOGLE_API_KEY` | 별도 호출 로직 추가 |
-| 로컬 Ollama | 없음 (로컬) | `OLLAMA_BASE_URL` | 엔드포인트 URL 변경 |
-
-> 현재 구현에서는 `OPENAI_API_KEY` 하나만 있으면 모든 파이프라인을 실행할 수 있습니다.
+- 문서에는 Planner가 나오지만 실제 코드에는 독립 `Planner` 모듈이 없다.
+- 현재 구현은 **Router 통합형 계획 단계 + 고정 MOA 파이프라인**으로 보는 것이 정확하다.
 
 ---
 
-## 5. 웹 UI 지원 현황
+## 4. 실제 실행에 필요한 조건
 
-### 결론: ❌ 웹 UI 미구현
+### 필요한 환경
 
-현재 프로젝트에는 웹 UI가 **전혀 없습니다.** 모든 실행은 CLI(명령줄)로만 가능합니다.
+- `.env`
+- `OPENAI_API_KEY`
+- `node`
+- `npx.cmd`
+- `mcp` Python SDK
 
-| 현재 구조 | 입력 방식 | 출력 방식 |
-|----------|----------|----------|
-| `run_single.py` | CLI args + `v1.json` 벤치마크 파일 | JSON 파일 저장 |
-| `run_moa.py` | CLI args + `v1.json` 벤치마크 파일 | JSON 파일 저장 |
-| `run_full.py` | CLI args + `v1.json` 벤치마크 파일 | JSON 파일 저장 |
+### 현재 확인된 것
 
-**사용자가 직접 프롬프트를 입력하여 MOA 파이프라인을 실행하는 인터페이스가 없습니다.**
+- `node --version` 통과
+- `npx.cmd --version` 통과
+- filesystem MCP 클라이언트 단독 호출 성공
 
-- 가드레일 #3에서 "UI 개발 금지 (CLI + JSON 로그만)" → 6주차까지는 설계 의도대로
-- 그러나 7주차 이후 실제 활용을 위해서는 웹 UI 구현이 필요함
-- 구현 지침은 `week7_implement.md`에 별도 작성
+### 아직 남은 것
 
----
-
-## 6. 프로젝트 파일 트리 (최종 상태)
-
-```
-MOA_OC_study/
-├── app/
-│   ├── __init__.py
-│   ├── agents/
-│   │   ├── __init__.py
-│   │   ├── base_agent.py          # LLM API 호출 래퍼
-│   │   ├── draft_agent.py         # Draft × 3 (analytical/creative/structured)
-│   │   ├── critic_agent.py        # 비교 분석
-│   │   ├── judge_agent.py         # 품질 판정 (pass/rewrite/escalate)
-│   │   └── rewrite_agent.py       # 피드백 기반 개선
-│   ├── core/
-│   │   ├── config.py              # .env 로딩, 전역 설정
-│   │   ├── cost_tracker.py        # 토큰·비용 집계
-│   │   ├── logger.py              # JSON trace 로거
-│   │   └── timer.py               # 레이턴시 데코레이터
-│   ├── eval/
-│   │   ├── comparator.py          # 경로별 비교 분석
-│   │   ├── metrics.py             # 품질·시스템 지표
-│   │   └── rubric.py              # LLM 기반 루브릭 평가
-│   ├── mcp_client/
-│   │   ├── __init__.py
-│   │   └── client.py              # MCP 도구 호출 (mock:// 지원)
-│   ├── orchestrator/
-│   │   ├── __init__.py
-│   │   ├── executor.py            # MOA 파이프라인 실행 엔진
-│   │   ├── retry_policy.py        # 재시도·폴백 정책
-│   │   ├── router.py              # 2단계 하이브리드 라우팅
-│   │   └── synthesizer.py         # 최종 종합 에이전트
-│   ├── prompts/                   # 역할별 시스템 프롬프트 (.md)
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   ├── chunker.py             # 텍스트 분할
-│   │   ├── embedder.py            # 임베딩 (SHA256 플레이스홀더)
-│   │   └── retriever.py           # 단어 중복 기반 검색
-│   └── schemas/
-│       ├── task.py                # TaskRequest, TaskPlan
-│       ├── agent_io.py            # AgentInput, AgentOutput
-│       └── trace.py               # TraceRecord, RunSummary
-├── data/
-│   ├── benchmarks/v1.json         # 12건 벤치마크
-│   ├── rag_docs/doc1~5.txt        # RAG 샘플 문서
-│   ├── outputs/                   # 실행 결과 저장
-│   └── traces/                    # trace 로그 저장
-├── scripts/
-│   ├── run_single.py              # Baseline CLI
-│   ├── run_moa.py                 # MOA CLI
-│   ├── run_full.py                # Full Pipeline CLI
-│   └── compare_runs.py            # 결과 비교 CLI
-├── tests/                         # 116개 테스트
-│   ├── test_base_agent.py
-│   ├── test_critic.py
-│   ├── test_draft_diversity.py
-│   ├── test_eval.py
-│   ├── test_judge.py
-│   ├── test_logger.py
-│   ├── test_pipeline_moa.py
-│   ├── test_pipeline_single.py
-│   ├── test_rag.py
-│   ├── test_router.py
-│   ├── test_run_full.py
-│   ├── test_schemas.py
-│   └── test_synthesizer.py
-├── docs/                          # 명세 문서 9개
-├── refs/                          # 기술 스택·구조·평가 지침
-├── requirements.txt
-├── env.example
-└── claude.md                      # AI 인스트럭션
-```
+- `OPENAI_API_KEY`가 설정된 상태에서 `moa+rag` 실측 실행
+- `OPENAI_API_KEY`가 설정된 상태에서 `moa+mcp` 실측 실행
+- `data/outputs/`와 `data/traces/`에 실환경 산출물 남기기
 
 ---
 
-## 7. 핵심 아키텍처 흐름
+## 5. 현재 웹 UI 상태
 
-```
-사용자 입력
-    │
-    ▼
-  Router (rule_based_route → llm_route)
-    │
-    ├─ single ──► BaseAgent 단일 호출 ──► 결과 JSON
-    │
-    └─ moa ──► Draft×3 (병렬)
-                  │
-                  ▼
-              Critic (비교 분석)
-                  │
-                  ▼
-              Synthesizer (종합)
-                  │
-                  ▼
-              Judge (pass/rewrite/escalate)
-                  │
-                  ├─ pass ──► 결과 JSON
-                  └─ rewrite ──► Rewrite Agent → Judge (최대 2회 루프)
-```
+### 결론: 아직 코드로는 미구현
 
-**RAG/MCP 주입 (6주차):**
-- Router가 `requires_rag=True` → Executor가 RAG 문서 검색 후 프롬프트에 추가
-- Router가 `requires_mcp=True` → Executor가 MCP 도구 호출 후 결과를 프롬프트에 추가
+- `app/web/` 없음
+- `scripts/run_web.py` 없음
+- 브라우저 UI 없음
+
+하지만 문서 상태는 바뀌었다.
+
+- `week7_implement.md`는 더 이상 “웹 서버를 당장 추가하자”는 초안이 아니다.
+- 이제는 **현재 MCP/RAG/evaluation 백엔드를 감싸는 플랫폼 UI 계약 문서** 역할을 한다.
+
+---
+
+## 6. Week 7 종료 시점 파일 기준 요약
+
+### 핵심 코드 파일
+
+- `app/orchestrator/router.py`
+- `app/orchestrator/executor.py`
+- `app/rag/retriever.py`
+- `app/rag/embedder.py`
+- `app/mcp_client/client.py`
+- `scripts/run_full.py`
+- `app/eval/rubric.py`
+- `app/eval/comparator.py`
+
+### 핵심 문서
+
+- `week7_plan.md`
+- `week7_c1_implement.md`
+- `week7_c2_implement.md`
+- `week7_c3_implement.md`
+- `week7_implement.md`
+- `week8_plan.md`
+
+---
+
+## 7. 남은 후속 작업
+
+Week 7 종료 시점 기준으로 남은 것은 “코드가 없다”가 아니라 **실측 증거와 문서 정합화 마무리**다.
+
+### 우선순위
+
+1. `OPENAI_API_KEY` 설정 후 `moa+rag` 실측 output/trace 남기기
+2. `OPENAI_API_KEY` 설정 후 `moa+mcp` 실측 output/trace 남기기
+3. Planner 괴리를 문서에서 명시적으로 정리하기
+4. 필요 시 UI 실제 구현을 Week 8 이후 범위로 진행하기
+
+---
+
+## 8. 한 줄 결론
+
+> Week 7은 이제 “MCP mock 단계”가 아니라, **RAG는 코드 완료·실측 대기, MCP는 1차 실제화 완료·full run 실측 대기** 상태다.

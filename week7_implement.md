@@ -1,286 +1,256 @@
-# Week 7 — 웹 UI 구현 지침
+# Week 7 Implement Guide — C7-3 Actual MCP + Platform UI Reframe
 
-> 목표: 기존 CLI 파이프라인을 건드리지 않고, 웹 UI를 추가하여 사용자가 브라우저에서 프롬프트를 입력하면 MOA 파이프라인이 실행되도록 구현
-
----
-
-## 1. 현재 상태 분석
-
-### 문제점
-- 모든 실행이 CLI (`scripts/run_full.py`) + 벤치마크 파일 (`v1.json`) 기반
-- 사용자가 자유롭게 프롬프트를 입력하여 MOA를 실행할 수 있는 인터페이스 없음
-- 가드레일 #3 "UI 개발 금지"는 6주차까지의 제약 → 7주차부터는 해제
-
-### 재사용 가능한 기존 코드
-- `scripts/run_full.py` → `run_single_path()`, `run_moa_path()` 함수를 그대로 호출 가능
-- `app/orchestrator/router.py` → `Router.route(task)` 로 경로 자동 결정
-- `app/core/cost_tracker.py` → 비용 추적
-- `app/core/logger.py` → trace 기록
+> 목적: Week 7의 남은 구현을 **실제 MCP 연결** 기준으로 마감하고, `week7_implement.md`를 더 이상 “웹 UI 선행 초안”이 아니라 **현재 백엔드 상태를 전제로 한 플랫폼 UI 명세**로 재정렬한다.
 
 ---
 
-## 2. 기술 스택 선정
+## 1. 현재 구현 상태
 
-| 항목 | 선택 | 이유 |
-|------|------|------|
-| 웹 프레임워크 | **FastAPI** | async 네이티브, 가볍고 빠름, MIT 라이선스 |
-| 프론트엔드 | **Jinja2 + HTMX** 또는 **순수 HTML/JS** | 별도 빌드 도구 불필요 |
-| ASGI 서버 | **uvicorn** | FastAPI 표준 서버, BSD 라이선스 |
+### 이미 완료된 백엔드 축
 
-### requirements.txt 추가 항목
-```
-# Web UI (Week 7)
-fastapi>=0.110.0            # MIT - 웹 API 프레임워크
-uvicorn>=0.27.0             # BSD-3 - ASGI 서버
-jinja2>=3.1.0               # BSD-3 - HTML 템플릿 (선택)
-```
+- `run_full.py`는 `Router`의 `routing` 정보를 실제 실행선까지 전달한다.
+- `run_full.py`는 `--evaluate` 플래그로 path-aware 평가를 저장할 수 있다.
+- RAG는 `ChromaRetriever` + `OpenAIEmbedder` 기본 경로와 `SimpleRetriever` 폴백 경로를 가진다.
+- MCP는 공식 `mcp` Python SDK + `stdio` 기반 Filesystem MCP v1 코드가 반영되어 있다.
+- `mcp_tool` trace와 `normalized_result_summary` 기록 구조가 존재한다.
 
----
+### 아직 없는 것
 
-## 3. 파일 구조
+- 실제 웹 서버 코드 (`app/web/`, `scripts/run_web.py`)
+- 브라우저 UI
+- OpenAI API 키가 설정된 환경에서 남겨진 실환경 `moa+rag`, `moa+mcp` 산출물
 
-기존 코드를 **전혀 수정하지 않고** 아래 파일만 추가:
-
-```
-MOA_OC_study/
-├── app/
-│   └── web/                       # ← 새로 추가
-│       ├── __init__.py
-│       ├── server.py              # FastAPI 앱 정의
-│       ├── routes.py              # API 엔드포인트
-│       └── templates/
-│           └── index.html         # 웹 UI 페이지
-├── scripts/
-│   └── run_web.py                 # ← 새로 추가: 웹 서버 실행 스크립트
-```
+즉, **Week 7의 남은 본질은 UI 구현이 아니라 MCP 연동 완료를 플랫폼 UI 관점에서 문서화하는 것**이다.
 
 ---
 
-## 4. API 설계
+## 2. 문서 역할 재정의
 
-### 4-1. POST `/api/run` — 프롬프트 실행
+이 문서는 더 이상 “지금 바로 FastAPI를 추가하자”는 선행 구현안이 아니다.
 
-**요청:**
+이제의 역할은 아래와 같다.
+
+1. 현재 CLI/trace 중심 백엔드를 **어떤 UI 계약**으로 감쌀지 정의한다.
+2. 실제로 존재하는 RAG/MCP/evaluation 구조를 **UI에서 어떤 데이터로 보여줄지** 정리한다.
+3. 추후 `app/web/` 구현 시, 기존 파이프라인을 다시 설계하지 않고 **표현 레이어만 추가**하도록 기준을 고정한다.
+
+---
+
+## 3. UI 구현 원칙
+
+### 원칙 1. 백엔드를 새로 만들지 않는다
+
+- UI는 `scripts/run_full.py`와 동일한 실행 의미를 가져야 한다.
+- Router / MOA / RAG / MCP / Evaluation 로직은 기존 코드 재사용이 원칙이다.
+- UI는 파이프라인을 대체하지 않고 **관찰·실행·비교를 돕는 레이어**여야 한다.
+
+### 원칙 2. trace-first
+
+- 사용자가 가장 먼저 봐야 하는 것은 “예쁜 답변”이 아니라 **어떤 경로로 실행됐는지**다.
+- `path`, `routing_reason`, `requires_rag`, `requires_mcp`, `selected_chunks`, `tool_trace`를 결과와 함께 보여줘야 한다.
+
+### 원칙 3. 실험 비교 가능성 유지
+
+- UI는 단일 실행 데모가 아니라 `single`, `moa`, `moa+rag`, `moa+mcp`를 비교할 수 있어야 한다.
+- 비용/토큰/지연/평가를 한 화면에서 같이 읽을 수 있어야 한다.
+
+### 원칙 4. Planner는 당장 새로 만들지 않는다
+
+- 현재 코드에는 독립 `Planner` 모듈이 없다.
+- UI 문서에서도 Planner를 별도 API나 패널로 가정하지 않는다.
+- 필요한 경우 “Router 통합형 계획 단계”로 표기한다.
+
+---
+
+## 4. 권장 UI 범위
+
+### Phase A. 실행 콘솔 UI
+
+최소 기능:
+
+- 프롬프트 입력
+- `task_type` 선택
+- `force_path` 선택
+- `evaluate` on/off
+- 실행 결과 텍스트 표시
+- 실행 메타데이터 표시
+
+표시해야 할 메타데이터:
+
+- `path`
+- `routing_reason`
+- `routing_confidence`
+- `prompt_tokens`
+- `completion_tokens`
+- `latency_ms`
+- `cost_estimate`
+- `agent_count`
+- `agents`
+
+### Phase B. 컨텍스트 패널
+
+RAG/MCP가 붙은 경우 아래를 별도 패널로 표시한다.
+
+RAG:
+
+- `retrieval_context`
+- `selected_chunks`
+- `doc_id`
+- `chunk_id`
+- `source_path`
+- `normalized_relevance`
+
+MCP:
+
+- `server_name`
+- `tool_name`
+- `args`
+- `success`
+- `normalized_result_summary`
+- `fallback_reason`
+
+### Phase C. 비교/실험 패널
+
+- 저장된 `data/outputs/*.json` 기반 실행 비교
+- `baseline`, `rag`, `mcp` 그룹 비교 테이블
+- `avg_score_delta`, `avg_cost_delta`, `avg_latency_delta`, `avg_tokens_delta` 표시
+
+---
+
+## 5. API/서비스 계약
+
+UI를 구현할 때 필요한 최소 서비스 계약은 아래와 같다.
+
+### 5-1. 실행 요청 계약
+
+입력:
+
 ```json
 {
-  "prompt": "인공지능의 미래에 대해 설명해주세요",
+  "prompt": "docs 폴더 파일 목록을 보여줘",
   "task_type": "explain",
   "force_path": null,
-  "constraints": {}
+  "constraints": {},
+  "evaluate": true
 }
 ```
 
-**응답:**
+출력:
+
 ```json
 {
-  "run_id": "20260418_143025_abc123",
-  "path": "moa",
-  "routing_reason": "explain = 복합 분석 필요",
-  "routing_confidence": 0.85,
-  "output": "인공지능의 미래는...",
+  "run_id": "abc123",
+  "path": "moa+mcp",
+  "routing_reason": "프롬프트에 외부 도구 필요 키워드 포함 → MCP 필요",
+  "routing_confidence": 0.9,
+  "output": "최종 응답",
   "agents": ["draft_analytical", "draft_creative", "draft_structured", "critic", "synthesizer", "judge"],
   "agent_count": 6,
   "prompt_tokens": 1200,
-  "completion_tokens": 800,
-  "latency_ms": 5432.1,
-  "cost_estimate": 0.00045,
-  "requires_rag": false,
-  "requires_mcp": false
-}
-```
-
-### 4-2. GET `/api/health` — 상태 확인
-
-```json
-{
-  "status": "ok",
-  "model": "gpt-4o-mini",
-  "api_key_set": true
-}
-```
-
----
-
-## 5. 핵심 구현 코드 가이드
-
-### 5-1. `app/web/server.py`
-
-```python
-"""웹 UI 서버 — FastAPI + 기존 파이프라인 연동."""
-
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-
-app = FastAPI(title="MOA Orchestration Lab", version="1.0.0")
-
-# 템플릿 경로 설정
-templates = Jinja2Templates(directory="app/web/templates")
-```
-
-### 5-2. `app/web/routes.py`
-
-```python
-"""API 엔드포인트 — 기존 파이프라인 함수 재사용."""
-
-from fastapi import APIRouter
-from pydantic import BaseModel
-
-from app.core.cost_tracker import CostTracker
-from app.core.logger import TraceLogger, generate_run_id
-from app.orchestrator.router import Router
-from app.schemas.task import TaskRequest
-
-# run_full.py의 함수를 직접 재사용
-from scripts.run_full import run_single_path, run_moa_path
-
-router = APIRouter(prefix="/api")
-
-class PromptRequest(BaseModel):
-    prompt: str
-    task_type: str = "explain"
-    force_path: str | None = None
-    constraints: dict = {}
-
-@router.post("/run")
-async def run_prompt(req: PromptRequest):
-    task = TaskRequest(
-        prompt=req.prompt,
-        task_type=req.task_type,
-        constraints=req.constraints,
-    )
-
-    run_id = generate_run_id()
-    logger = TraceLogger(run_id=run_id)
-    cost_tracker = CostTracker()
-    moa_router = Router()
-
-    # 경로 결정
-    if req.force_path:
-        from app.orchestrator.router import RoutingDecision
-        decision = RoutingDecision(
-            selected_path=req.force_path,
-            reason=f"사용자 지정: {req.force_path}",
-            confidence=1.0,
-        )
-    else:
-        decision = await moa_router.route(task)
-
-    # 파이프라인 실행
-    if decision.selected_path == "single":
-        text, outputs = await run_single_path(task, logger, cost_tracker)
-    else:
-        text, outputs = await run_moa_path(task, logger, cost_tracker)
-
-    logger.save()
-
-    return {
-        "run_id": run_id,
-        "path": decision.selected_path,
-        "routing_reason": decision.reason,
-        "routing_confidence": decision.confidence,
-        "output": text,
-        "agents": [o.agent_name for o in outputs],
-        "agent_count": len(outputs),
-        "prompt_tokens": sum(o.prompt_tokens for o in outputs),
-        "completion_tokens": sum(o.completion_tokens for o in outputs),
-        "latency_ms": round(sum(o.latency_ms for o in outputs), 2),
-        "cost_estimate": round(sum(o.cost_estimate for o in outputs), 6),
-        "requires_rag": getattr(decision, "requires_rag", False),
-        "requires_mcp": getattr(decision, "requires_mcp", False),
+  "completion_tokens": 700,
+  "latency_ms": 4200.0,
+  "cost_estimate": 0.0005,
+  "evaluation": {
+    "avg_score": 4.25
+  },
+  "evaluation_context": {
+    "tool_trace": {
+      "server_name": "filesystem",
+      "tool_name": "list_directory"
+    },
+    "tool_result_summary": "[MCP Server] filesystem ..."
+  },
+  "context_metadata": {
+    "routing": {
+      "requires_rag": false,
+      "requires_mcp": true
+    },
+    "mcp": {
+      "server_name": "filesystem",
+      "tool_name": "list_directory"
     }
+  }
+}
 ```
 
-### 5-3. `app/web/templates/index.html`
+### 5-2. 상태 확인 계약
 
-핵심 구조:
-- 프롬프트 입력 텍스트에어리어
-- task_type 셀렉트 (summarize / explain / ideate / critique_rewrite)
-- force_path 셀렉트 (auto / single / moa)
-- 실행 버튼 → `POST /api/run` 으로 fetch 호출
-- 결과 영역에 output, 라우팅 경로, 에이전트 목록, 토큰/비용 표시
+`/api/health` 수준에서 최소 아래를 확인 가능해야 한다.
 
-### 5-4. `scripts/run_web.py`
+- API 키 존재 여부
+- 기본 모델
+- `mcp` SDK 설치 여부
+- filesystem MCP 실행 가능 여부
 
-```python
-"""웹 서버 실행 스크립트."""
-import uvicorn
-from app.web.server import app
+---
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+## 6. 실제 구현 시 파일 구조 권장안
+
+현재는 문서만 정의하고, 구현 시 아래 구조를 권장한다.
+
+```text
+app/
+  web/
+    __init__.py
+    server.py
+    routes.py
+    templates/
+      index.html
+      run_detail.html
+      compare.html
+scripts/
+  run_web.py
 ```
 
----
+주의:
 
-## 6. 구현 순서 (커밋 3개 이내)
-
-### C7-1: 웹 서버 + API 엔드포인트
-1. `requirements.txt`에 fastapi, uvicorn 추가
-2. `app/web/server.py` — FastAPI 앱
-3. `app/web/routes.py` — `/api/run`, `/api/health` 엔드포인트
-4. `scripts/run_web.py` — 서버 실행 스크립트
-5. 기존 코드 수정 없음
-
-### C7-2: 프론트엔드 UI
-1. `app/web/templates/index.html` — 프롬프트 입력 폼 + 결과 표시
-2. `/` 라우트에서 HTML 제공
-3. JavaScript로 `/api/run` 호출 + 결과 렌더링
-
-### C7-3: 테스트 + 문서
-1. `tests/test_web.py` — FastAPI TestClient 기반 API 테스트
-2. 문서 업데이트
+- `app/web`는 표현 계층만 가진다.
+- 기존 `app/orchestrator`, `app/agents`, `app/rag`, `app/mcp_client` 로직을 재구현하지 않는다.
 
 ---
 
-## 7. 주의사항
+## 7. 구현 시 필수 반영사항
 
-### 기존 코드 변경 금지
-- `app/agents/`, `app/orchestrator/`, `app/core/` 등 기존 모듈은 일절 수정하지 않음
-- `scripts/run_full.py`의 함수를 **import하여 재사용**만 함
-- 웹 UI는 기존 파이프라인을 감싸는 **래퍼 레이어**
+### 7-1. 실행 경로
 
-### API 키 필수
-- `.env` 파일에 `OPENAI_API_KEY`가 설정되어 있어야 실제 작동
-- `/api/health`에서 API 키 설정 여부를 확인할 수 있도록 구현
-- 미설정 시 명확한 에러 메시지 반환
+- `run_moa_path()` 호출 시 반드시 `routing=decision`을 전달해야 한다.
+- 그렇지 않으면 `requires_rag`, `requires_mcp`가 UI 경로에서 무력화된다.
 
-### 보안 고려
-- API 키를 프론트엔드에 노출하지 않음
-- 입력 길이 제한 (프롬프트 최대 10,000자)
-- Rate limiting 고려 (비용 폭주 방지)
+### 7-2. 평가
 
-### 라이선스 준수
-- FastAPI: MIT ✅
-- uvicorn: BSD-3 ✅  
-- Jinja2: BSD-3 ✅
+- 평가 실행은 기본 on이 아니라 **선택형**이 안전하다.
+- 이유:
+  - 추가 LLM 호출 비용 발생
+  - 생성 경로와 평가 경로를 분리해야 지연시간 해석이 쉬움
 
----
+권장:
 
-## 8. 실행 방법 (구현 완료 후)
+- UI에 `평가 포함` 체크박스 제공
+- 내부적으로는 `--evaluate` 또는 동일 옵션으로 연결
 
-```bash
-# 1. 추가 의존성 설치
-pip install fastapi uvicorn jinja2
+### 7-3. MCP 보안
 
-# 2. .env 파일에 API 키 설정
-echo "OPENAI_API_KEY=sk-proj-your-key-here" > .env
+- UI에서 임의 경로 입력을 직접 받지 않는다.
+- 파일 읽기 요청은 Router/MCP policy가 결정한 안전한 요청만 허용한다.
+- `.env`, `.git`, `.venv`, workspace 외부 경로는 노출하지 않는다.
 
-# 3. 웹 서버 실행
-python scripts/run_web.py
+### 7-4. 실험 파일 조회
 
-# 4. 브라우저에서 접속
-# http://localhost:8000
-```
+- 비교 화면은 `data/outputs/`와 `data/traces/`만 읽는다.
+- 직접 DB를 도입하지 않는다.
 
 ---
 
-## 9. 검증 기준 (DoD)
+## 8. DoD
 
-- [ ] `http://localhost:8000` 접속 시 프롬프트 입력 UI 표시
-- [ ] 프롬프트 입력 후 MOA 파이프라인 실행 결과가 화면에 표시
-- [ ] Router가 자동으로 single/moa 경로 선택
-- [ ] 경로 강제 지정 옵션 동작
-- [ ] 토큰 수, 비용, 레이턴시가 결과에 포함
-- [ ] 기존 116개 테스트가 그대로 통과
-- [ ] 새 웹 API 테스트 추가 및 통과
+- [ ] UI 문서가 현재 백엔드 구조와 모순되지 않는다
+- [ ] `routing`, `evaluation`, `rag`, `mcp` 메타데이터를 UI 계약에 포함한다
+- [ ] `run_moa_path(..., routing=decision)` 전제를 명시한다
+- [ ] Planner를 별도 모듈로 가정하지 않고 현재 코드 상태를 반영한다
+- [ ] 플랫폼 UI가 단일 답변 화면이 아니라 실행/비교/추적 중심이라는 점을 문서화한다
+
+---
+
+## 9. 한 줄 요약
+
+> `week7_implement.md`는 더 이상 “웹 서버를 빨리 만들자”는 문서가 아니라, **실제 RAG/MCP/evaluation 백엔드를 어떤 플랫폼 UI 계약으로 감쌀지 정의하는 문서**여야 한다.

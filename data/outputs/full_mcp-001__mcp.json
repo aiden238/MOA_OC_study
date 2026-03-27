@@ -1,0 +1,84 @@
+{
+  "case_id": "mcp-001",
+  "task_type": "explain",
+  "prompt": "rag 자료 폴더의 파일 목록을 보여주고 어떤 파일들이 있는지 한 줄씩 정리해줘.",
+  "output": "data\\rag_docs 폴더에 있는 파일은 총 5개로 확인됩니다. 한 줄씩 정리하면 다음과 같습니다:\n- doc1.txt\n- doc2.txt\n- doc3.txt\n- doc4.txt\n- doc5.txt\n\n추가 제안:\n- 원하시면 각 파일의 간단 요약이나 핵심 키워드를 추출해 드립니다.\n- 필요 시 파일 간 키워드나 주제별로 그룹화해 교차 참조도 가능합니다.",
+  "path": "moa+mcp",
+  "routing_reason": "프롬프트에 외부 도구 필요 키워드 포함 → MCP 필요",
+  "routing_confidence": 0.9,
+  "agent_count": 6,
+  "agents": [
+    "draft_analytical",
+    "draft_creative",
+    "draft_structured",
+    "critic",
+    "synthesizer",
+    "judge"
+  ],
+  "prompt_tokens": 3546,
+  "completion_tokens": 1585,
+  "latency_ms": 13441.51,
+  "cost_estimate": 0.000812,
+  "constraints": {},
+  "evaluation": {
+    "clarity": 5,
+    "structure": 5,
+    "constraint_following": 5,
+    "usefulness": 5,
+    "tool_use_correctness": 5,
+    "tool_result_faithfulness": 5,
+    "reasoning": "",
+    "avg_score": 5.0,
+    "judge_model": "gpt-4o-mini-2024-07-18",
+    "judge_tokens": 654,
+    "judge_cost": 0.000123,
+    "path": "moa+mcp"
+  },
+  "evaluation_context": {
+    "tool_trace": {
+      "server_name": "filesystem",
+      "tool_name": "list_directory",
+      "args": {
+        "path": "data\\rag_docs"
+      },
+      "success": true
+    },
+    "tool_result_summary": "[MCP Server] filesystem\n[Tool] list_directory\n[Args] {\"path\": \"data\\\\rag_docs\"}\n[Result]\n{\n  \"content\": \"[FILE] doc1.txt\\n[FILE] doc2.txt\\n[FILE] doc3.txt\\n[FILE] doc4.txt\\n[FILE] doc5.txt\"\n}"
+  },
+  "context_metadata": {
+    "routing": {
+      "requires_rag": false,
+      "requires_mcp": true,
+      "rag_query_hint": null,
+      "mcp_intent": "filesystem_lookup",
+      "preferred_server": "filesystem",
+      "preferred_tool": "list_files"
+    },
+    "mcp": {
+      "server_name": "filesystem",
+      "tool_name": "list_directory",
+      "args": {
+        "path": "data\\rag_docs"
+      },
+      "success": true,
+      "available_tools": [
+        "read_file",
+        "read_text_file",
+        "read_media_file",
+        "read_multiple_files",
+        "write_file",
+        "edit_file",
+        "create_directory",
+        "list_directory",
+        "list_directory_with_sizes",
+        "directory_tree",
+        "move_file",
+        "search_files",
+        "get_file_info",
+        "list_allowed_directories"
+      ],
+      "normalized_result_summary": "[MCP Server] filesystem\n[Tool] list_directory\n[Args] {\"path\": \"data\\\\rag_docs\"}\n[Result]\n{\n  \"content\": \"[FILE] doc1.txt\\n[FILE] doc2.txt\\n[FILE] doc3.txt\\n[FILE] doc4.txt\\n[FILE] doc5.txt\"\n}",
+      "result_text": "{\n  \"content\": \"[FILE] doc1.txt\\n[FILE] doc2.txt\\n[FILE] doc3.txt\\n[FILE] doc4.txt\\n[FILE] doc5.txt\"\n}"
+    }
+  }
+}

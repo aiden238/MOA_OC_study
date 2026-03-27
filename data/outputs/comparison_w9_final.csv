@@ -1,0 +1,4 @@
+﻿group,left_path,right_path,count,avg_score_delta,avg_cost_delta,avg_latency_delta,avg_tokens_delta
+baseline,single,moa,12,-0.277778,0.001538,20539.315,7293.083333
+rag,moa,moa+rag,3,0.125,0.000143,-1919.556667,1867.666667
+mcp,moa,moa+mcp,3,2.75,-2.1e-05,-1720.113333,576.666667

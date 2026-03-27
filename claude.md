@@ -63,8 +63,9 @@
 추가 상태 해석:
 
 - 위 결과는 "실주행 완료" 상태다. 단순 구현 완료가 아니다.
-- mixed-provider는 아직 실행되지 않았다.
-- GPT-5 cost estimation은 미반영 상태라 비용 숫자는 신뢰 기준이 아니다.
+- mixed-provider는 아직 실행되지 않았고, 현재 `.env` 기준으로는 Gemini/Grok 키도 없다.
+- GPT-5 cost estimation은 반영 완료 상태다.
+- 구조화 평가 안정성을 위해 현재 baseline snapshot은 `EVAL_MODEL=gpt-4o-mini` override로 재생성됐다.
 - `data/outputs`, `data/traces` evidence는 로컬 기준이며 기본 git 추적 대상은 아니다.
 
 ---
@@ -76,9 +77,9 @@ Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
 1. OpenAI 기준 Week 8 snapshot 유지
 2. Gemini/Grok를 `draft_*`에 분배해 mixed-provider 확장 실험
 3. 운영 보강
-   - GPT-5 pricing 반영
    - evidence commit 정책 정리
    - 추가 benchmark 확장
+   - mixed-provider 실행 전 provider key 준비
 
 금지 해석:
 
@@ -118,3 +119,5 @@ Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
 - OpenRouter 문구를 현재 기준에서 제외했다.
 - Week 8 실주행 완료 상태와 비교 결과를 반영했다.
 - 현재 선택지와 미완료 항목 해석 규칙을 추가했다.
+- pricing 반영 완료와 evaluation override 기반 baseline 갱신을 추가했다.
+- ✅ 9주차 완료: baseline sweep 12건(single/moa) 실행, RAG/MCP 각 3건 확장 실행, 3-group 비교표 `data/outputs/comparison_w9_final.csv` 생성, 회고는 `docs/06_experiment_log.md` Week 9 섹션 참고.

@@ -234,13 +234,23 @@ async def run_pipeline(
 
         evaluation = {}
         if evaluate:
-            evaluation = await evaluate_single(
-                prompt=task.prompt,
-                output=final_text,
-                constraints=task.constraints,
-                path=actual_path,
-                evaluation_context=evaluation_context,
-            )
+            last_err: Exception | None = None
+            for attempt in range(2):
+                try:
+                    evaluation = await evaluate_single(
+                        prompt=task.prompt,
+                        output=final_text,
+                        constraints=task.constraints,
+                        path=actual_path,
+                        evaluation_context=evaluation_context,
+                    )
+                    last_err = None
+                    break
+                except Exception as exc:  # noqa: BLE001 — judge is stochastic
+                    last_err = exc
+                    print(f"    judge attempt {attempt + 1} failed: {exc}")
+            if last_err is not None:
+                evaluation = {"error": str(last_err), "avg_score": None}
 
         result = {
             "case_id": task.task_id,

@@ -47,7 +47,11 @@ class JudgeAgent(BaseAgent):
 {{"decision": "pass|rewrite|escalate", "confidence": 0.0~1.0, "reasoning": "판정 근거", "improvement_hints": ["개선 포인트1", ...]}}"""
 
         # 낮은 temperature로 일관된 판정 유도
-        result = await self.run(message, temperature=0.2)
+        result = await self.run(
+            message,
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
 
         # JSON 파싱 → JudgeDecision 변환
         return self._parse_decision(result.content)

@@ -1,64 +1,84 @@
-# 02. 아키텍처
+# 02. Architecture
 
-## 실행 경로별 비교
+## 실행 경로
 
-### Path A: Single (3주차~)
+### Path A: Single
 
-```
-Input → LLM 단일 호출 → Output + Trace
-```
-
-### Path B: MOA (4주차~)
-
-```
-Input → Draft Agent ×3 (병렬)
-      → Critic Agent (약점 분석)
-      → Synthesizer (최종 조합)
-      → Output + Trace
+```text
+Input -> Single LLM -> Output + Trace
 ```
 
-### Path C: Full (5주차~)
+### Path B: MOA
 
-```
-Input → Router (단순/복합 분기)
-      → Planner 또는 Router 통합형 계획 단계
-      → Draft Agent ×3
-      → Critic Agent
-      → Judge Agent (best draft 선택 / 재생성 판정)
-      → [Rewrite Agent] (조건부)
-      → Synthesizer
-      → Output + Trace
-```
-
-### Path D: RAG+MCP (6주차)
-
-```
-Input → Router (MCP/RAG 필요 여부 판별 포함)
-      → Planner 또는 Router 통합형 계획 단계
-      → [RAG Retriever] (필요 시)
-      → [MCP Tool Call] (필요 시)
-      → Draft ×3 → Critic → Judge → [Rewrite] → Synthesizer
-      → Output + Trace
+```text
+Input
+  -> Draft x3
+  -> Critic
+  -> Synthesizer
+  -> Judge
+  -> (Rewrite)
+  -> Output + Trace
 ```
 
-## 모듈 구조
+### Path C: Full
+
+```text
+Input
+  -> Router
+  -> Planning Stage
+  -> [RAG Retrieval]
+  -> [MCP Tool Call]
+  -> MOA Pipeline
+  -> Output + Trace
+```
+
+---
+
+## 구현 해석
+
+- Router는 `selected_path`, `requires_rag`, `requires_mcp`와 enrichment hint를 반환한다.
+- Executor는 Router 결정을 받아 RAG/MCP context를 prompt enrichment로 주입한다.
+- 문서의 `Planner`는 현재 코드에서 별도 필수 모듈이 아니라 planning stage 개념이다.
+
+---
+
+## 모델 / 프로바이더 기준
+
+- 기본 provider는 `OpenAI`다.
+- 실제 기본 모델은 `.env`의 `DEFAULT_MODEL`이다.
+- Gemini와 Grok는 에이전트별 env override로 선택 사용한다.
+- BaseAgent는 agent name을 기준으로 provider/model override를 읽는다.
+- 기본 임베딩은 OpenAI `text-embedding-3-small`이다.
+
+예:
+
+```text
+DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini
+DRAFT_ANALYTICAL_MODEL=gemini-2.5-flash
+
+DRAFT_CREATIVE_MODEL_PROVIDER=xai
+DRAFT_CREATIVE_MODEL=grok-4
+```
+
+---
+
+## 주요 모듈
 
 | 모듈 | 역할 | 위치 |
 |------|------|------|
-| **core** | config, logger, timer 등 공통 인프라 | `app/core/` |
-| **schemas** | Pydantic으로 입출력 구조 강제 | `app/schemas/` |
-| **prompts** | 역할별 시스템 프롬프트 (Markdown) | `app/prompts/` |
-| **agents** | LLM 호출 최소 단위 (BaseAgent 상속) | `app/agents/` |
-| **orchestrator** | 에이전트 조율 (Router, Executor, 향후 필요 시 Planner) | `app/orchestrator/` |
-| **eval** | 루브릭 평가, 지표 계산, 경로 비교 | `app/eval/` |
-| **rag** | 문서 검색·분할·임베딩 (6주차) | `app/rag/` |
-| **mcp_client** | MCP 서버 호출 래퍼 (6주차) | `app/mcp_client/` |
+| `core` | config, logger, timer, cost tracking | `app/core/` |
+| `schemas` | Pydantic 입출력 모델 | `app/schemas/` |
+| `agents` | LLM 호출 단위 | `app/agents/` |
+| `orchestrator` | Router, Executor, Synthesizer, retry policy | `app/orchestrator/` |
+| `eval` | rubric, comparator, metrics | `app/eval/` |
+| `rag` | chunking, embedding, retrieval | `app/rag/` |
+| `mcp_client` | MCP session and tool wrapper | `app/mcp_client/` |
 
-## 기술 스택 요약
+---
 
-- **언어:** Python 3.11+
-- **LLM 호출:** httpx (async)
-- **스키마:** pydantic v2
-- **환경변수:** python-dotenv
-- **테스트:** pytest + pytest-asyncio
-- **모델:** 1~5주차 단일 모델 고정 (gpt-4o-mini 또는 claude-3-5-haiku)
+## 변경 기록
+
+### 2026-04-20
+
+- OpenAI 기본, Gemini/Grok 선택 확장 기준으로 런타임 설명을 갱신했다.
+- OpenRouter 기반 설명을 철회했다.

@@ -62,6 +62,63 @@ class TestBaseAgent:
         assert output.completion_tokens == 10
         assert output.latency_ms >= 0
 
+    @pytest.mark.asyncio
+    async def test_openai_gpt5_uses_compatible_payload(self, monkeypatch, mock_openai_response):
+        monkeypatch.setenv("DEFAULT_MODEL", "gpt-5-nano-2025-08-07")
+        agent = BaseAgent(agent_name="test_agent", system_prompt="Be concise.")
+
+        captured_payload = {}
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+        mock_resp.json = lambda: mock_openai_response
+        mock_resp.raise_for_status = lambda: None
+
+        async def _post(*args, **kwargs):
+            captured_payload.update(kwargs["json"])
+            return mock_resp
+
+        with patch("app.agents.base_agent.httpx.AsyncClient") as MockClient:
+            mock_client_instance = AsyncMock()
+            mock_client_instance.post.side_effect = _post
+            mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+            mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+            MockClient.return_value = mock_client_instance
+
+            await agent.run("Hello, world!")
+
+        assert "max_completion_tokens" in captured_payload
+        assert "max_tokens" not in captured_payload
+        assert "temperature" not in captured_payload
+        assert captured_payload["reasoning_effort"] == "minimal"
+
+    @pytest.mark.asyncio
+    async def test_response_format_is_forwarded(self, mock_openai_response):
+        agent = BaseAgent(agent_name="test_agent", system_prompt="Be concise.")
+
+        captured_payload = {}
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+        mock_resp.json = lambda: mock_openai_response
+        mock_resp.raise_for_status = lambda: None
+
+        async def _post(*args, **kwargs):
+            captured_payload.update(kwargs["json"])
+            return mock_resp
+
+        with patch("app.agents.base_agent.httpx.AsyncClient") as MockClient:
+            mock_client_instance = AsyncMock()
+            mock_client_instance.post.side_effect = _post
+            mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+            mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+            MockClient.return_value = mock_client_instance
+
+            await agent.run(
+                "Hello, world!",
+                response_format={"type": "json_object"},
+            )
+
+        assert captured_payload["response_format"] == {"type": "json_object"}
+
 
 class TestLoadPrompt:
     def test_load_existing_prompt(self, tmp_path):

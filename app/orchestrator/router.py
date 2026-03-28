@@ -128,7 +128,11 @@ async def llm_route(task: TaskRequest) -> RoutingDecision:
 
 이 요청은 단일 LLM 호출(single)로 충분한가요, 다중 관점 파이프라인(moa)이 필요한가요? 추가로 RAG나 MCP가 필요한지 여부도 알려주세요."""
 
-    result = await agent.run(message, temperature=0.2)
+    result = await agent.run(
+        message,
+        temperature=0.2,
+        response_format={"type": "json_object"},
+    )
 
     # JSON 파싱
     try:

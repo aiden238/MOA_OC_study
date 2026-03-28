@@ -1,0 +1,23 @@
+{
+  "version": "v1_rag_mcp",
+  "cases": [
+    {
+      "id": "rag-001",
+      "type": "explain",
+      "prompt": "rag 자료를 참고해서 문서의 핵심 주제 3가지를 설명하라.",
+      "constraints": {
+        "source": "rag_docs"
+      },
+      "difficulty": "medium",
+      "expected_moa_advantage": "rag_helps"
+    },
+    {
+      "id": "mcp-001",
+      "type": "explain",
+      "prompt": "rag 자료 폴더의 파일 목록을 보여주고 어떤 파일들이 있는지 한 줄씩 정리해줘.",
+      "constraints": {},
+      "difficulty": "medium",
+      "expected_moa_advantage": "mcp_helps"
+    }
+  ]
+}

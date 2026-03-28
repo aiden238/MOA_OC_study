@@ -1,38 +1,77 @@
-"""BaseAgent — httpx + pydantic 기반 LLM API 호출 래퍼.
+"""Base agent backed by a provider-configurable chat completions API."""
 
-모든 에이전트(Draft, Critic, Synthesizer 등)의 부모 클래스.
-OpenAI Chat Completions API를 httpx로 호출하고
-AgentOutput 스키마로 정형화된 결과를 반환한다.
-"""
-
-from pathlib import Path
+import asyncio
 
 import httpx
 
 from app.core.config import (
-    DEFAULT_MODEL,
     DEFAULT_TEMPERATURE,
+    MAX_RETRIES,
     MAX_TOKENS,
-    OPENAI_API_KEY,
     PROJECT_ROOT,
+    resolve_llm_settings,
 )
 from app.core.timer import measure_time
 from app.schemas.agent_io import AgentInput, AgentOutput
 
 
 class BaseAgent:
-    """모든 에이전트의 기반 클래스. httpx로 LLM API를 호출하고 AgentOutput을 반환."""
+    """Base class used by the orchestration agents."""
 
-    # 역할별 시스템 프롬프트 마크다운 파일이 위치한 디렉토리
     PROMPTS_DIR = PROJECT_ROOT / "app" / "prompts"
 
-    def __init__(self, agent_name: str, system_prompt: str | None = None):
-        self.agent_name = agent_name          # 에이전트 식별 이름
-        self.system_prompt = system_prompt or ""  # LLM에 전달할 시스템 프롬프트
+    def __init__(
+        self,
+        agent_name: str,
+        system_prompt: str | None = None,
+        model: str | None = None,
+        provider: str | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ):
+        self.agent_name = agent_name
+        self.system_prompt = system_prompt or ""
+        self.model_override = model
+        self.provider_override = provider
+        self.api_key_override = api_key
+        self.base_url_override = base_url
+
+    @staticmethod
+    def _retryable_status(status_code: int) -> bool:
+        if not isinstance(status_code, int):
+            return False
+        return status_code == 429 or 500 <= status_code < 600
+
+    @staticmethod
+    def _uses_max_completion_tokens(provider: str, model: str) -> bool:
+        if provider != "openai":
+            return False
+        return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
+
+    @staticmethod
+    def _supports_custom_temperature(provider: str, model: str) -> bool:
+        if provider != "openai":
+            return True
+        return not model.startswith("gpt-5")
+
+    @staticmethod
+    def _default_reasoning_effort(provider: str, model: str) -> str | None:
+        if provider == "openai" and model.startswith("gpt-5"):
+            return "minimal"
+        return None
+
+    @staticmethod
+    def _retry_delay_seconds(attempt_index: int, response: httpx.Response | None = None) -> float:
+        if response is not None:
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    return max(1.0, float(retry_after))
+                except ValueError:
+                    pass
+        return min(8.0, float(2 ** attempt_index))
 
     async def run(self, user_message: str, **kwargs) -> AgentOutput:
-        """사용자 메시지를 받아 LLM을 호출하고 AgentOutput을 반환."""
-        # 입력 스키마 구성
         agent_input = AgentInput(
             agent_name=self.agent_name,
             system_prompt=self.system_prompt,
@@ -40,9 +79,11 @@ class BaseAgent:
             temperature=kwargs.get("temperature", DEFAULT_TEMPERATURE),
             max_tokens=kwargs.get("max_tokens", MAX_TOKENS),
         )
-        # LLM 호출 (measure_time 데코레이터가 지연시간도 함께 반환)
-        output, latency_ms = await self._call_llm(agent_input)
-        # 결과를 AgentOutput 스키마로 변환
+        output, latency_ms = await self._call_llm(
+            agent_input,
+            response_format=kwargs.get("response_format"),
+            reasoning_effort=kwargs.get("reasoning_effort"),
+        )
         return AgentOutput(
             agent_name=self.agent_name,
             content=output["content"],
@@ -57,11 +98,29 @@ class BaseAgent:
         )
 
     @measure_time
-    async def _call_llm(self, agent_input: AgentInput) -> dict:
-        """OpenAI Chat Completions API를 호출하고 응답을 딕셔너리로 반환."""
-        model = DEFAULT_MODEL
+    async def _call_llm(
+        self,
+        agent_input: AgentInput,
+        response_format: dict | None = None,
+        reasoning_effort: str | None = None,
+    ) -> dict:
+        settings = resolve_llm_settings(
+            agent_name=self.agent_name,
+            provider=self.provider_override,
+            model=self.model_override,
+            api_key=self.api_key_override,
+            base_url=self.base_url_override,
+        )
+        model = settings["model"]
+        provider = settings["provider"]
+        api_key = settings["api_key"]
+        base_url = settings["base_url"]
+
+        if not api_key:
+            raise RuntimeError(f"{provider} API key is not configured. Check .env.")
+
         headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
         payload = {
@@ -70,21 +129,58 @@ class BaseAgent:
                 {"role": "system", "content": agent_input.system_prompt},
                 {"role": "user", "content": agent_input.user_message},
             ],
-            "temperature": agent_input.temperature,
-            "max_tokens": agent_input.max_tokens,
         }
-
-        # httpx 비동기 클라이언트로 API 호출
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload,
+        if self._supports_custom_temperature(provider, model):
+            payload["temperature"] = agent_input.temperature
+        if self._uses_max_completion_tokens(provider, model):
+            payload["max_completion_tokens"] = agent_input.max_tokens
+            resolved_reasoning_effort = reasoning_effort or self._default_reasoning_effort(
+                provider, model
             )
-            resp.raise_for_status()  # 4xx/5xx 에러 시 예외 발생
-            data = resp.json()
+            if resolved_reasoning_effort:
+                payload["reasoning_effort"] = resolved_reasoning_effort
+        else:
+            payload["max_tokens"] = agent_input.max_tokens
+        if response_format:
+            payload["response_format"] = response_format
 
-        # 응답에서 필요한 필드 추출
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            attempts = max(1, MAX_RETRIES)
+            last_exc: Exception | None = None
+
+            for attempt in range(attempts):
+                try:
+                    resp = await client.post(
+                        f"{base_url.rstrip('/')}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    if self._retryable_status(resp.status_code) and attempt < attempts - 1:
+                        await asyncio.sleep(self._retry_delay_seconds(attempt, resp))
+                        continue
+
+                    resp.raise_for_status()
+                    data = resp.json()
+                    break
+                except httpx.HTTPStatusError as exc:
+                    last_exc = exc
+                    if (
+                        exc.response is not None
+                        and self._retryable_status(exc.response.status_code)
+                        and attempt < attempts - 1
+                    ):
+                        await asyncio.sleep(self._retry_delay_seconds(attempt, exc.response))
+                        continue
+                    raise
+                except httpx.RequestError as exc:
+                    last_exc = exc
+                    if attempt < attempts - 1:
+                        await asyncio.sleep(self._retry_delay_seconds(attempt))
+                        continue
+                    raise
+            else:
+                raise RuntimeError("Chat completion request failed without a response") from last_exc
+
         choice = data["choices"][0]["message"]["content"]
         usage = data.get("usage", {})
         return {
@@ -97,9 +193,7 @@ class BaseAgent:
 
     @staticmethod
     def _estimate_cost(prompt_tokens: int, completion_tokens: int, model: str) -> float:
-        """모델별 토큰 단가를 기반으로 API 호출 비용을 추정 (USD)."""
         pricing = {
-            # (입력 단가/토큰, 출력 단가/토큰) — 2024년 기준 공식 가격
             "gpt-4o-mini": (0.15 / 1_000_000, 0.60 / 1_000_000),
             "gpt-4o": (2.50 / 1_000_000, 10.00 / 1_000_000),
         }
@@ -108,8 +202,7 @@ class BaseAgent:
 
     @classmethod
     def load_prompt(cls, prompt_name: str) -> str:
-        """app/prompts/{prompt_name}.md 파일을 읽어 시스템 프롬프트 텍스트로 반환."""
         prompt_path = cls.PROMPTS_DIR / f"{prompt_name}.md"
         if not prompt_path.exists():
-            raise FileNotFoundError(f"프롬프트 파일을 찾을 수 없습니다: {prompt_path}")
+            raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
         return prompt_path.read_text(encoding="utf-8")

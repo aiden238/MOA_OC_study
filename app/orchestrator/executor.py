@@ -59,6 +59,7 @@ class MOAExecutor:
             (최종 출력 텍스트, 모든 에이전트 출력 리스트)
         """
         # 지연 import로 순환 의존성 방지
+        from app.core.config import EMBEDDING_MODEL
         from app.rag.context_builder import ContextBuilder
         from app.rag.retriever import ChromaRetriever, SimpleRetriever
         from app.mcp_client.client import MCPClient
@@ -74,7 +75,7 @@ class MOAExecutor:
                 rag_items = []
                 fallback_reason = None
                 retriever_name = "ChromaRetriever"
-                embedding_model = "text-embedding-3-small"
+                embedding_model = EMBEDDING_MODEL
 
                 try:
                     retriever = ChromaRetriever()

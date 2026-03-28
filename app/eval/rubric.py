@@ -125,7 +125,11 @@ async def evaluate_single(
     )
 
     message = build_judge_message(prompt, output, constraints, path, evaluation_context)
-    agent_output = await judge.run(message, temperature=0.1)
+    agent_output = await judge.run(
+        message,
+        temperature=0.1,
+        response_format={"type": "json_object"},
+    )
 
     scores = parse_judge_response(agent_output.content, path=path)
     scores["judge_model"] = agent_output.model

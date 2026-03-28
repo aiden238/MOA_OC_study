@@ -1,87 +1,120 @@
-# MOA Orchestration Lab — AI Agent Instructions
+# Claude Reference Guide
 
-> 항상 이 파일을 첨부. 주차 작업 시 `weekN_plan.md` + `weekN_implement.md`도 함께 첨부.
+이 파일은 `AGENTS.md`의 요약 미러다.
 
----
-
-## 프로젝트 정체성
-
-**한 줄 정의:** 단일 LLM 호출 → Multi-Agent Orchestration → MCP·RAG 통합까지 6주 단계적 확장 실험
-
-**핵심 질문:** "멀티 에이전트 오케스트레이션이 단일 호출보다 **실제로** 나은가?"
-
-**최종 아키텍처:** `Input → Router → Planner → [RAG/MCP] → Draft×3 → Critic → Judge → (Rewrite) → Synthesizer → Output + Trace`
+- 충돌 시 `AGENTS.md`를 우선한다.
+- Claude는 현재 기준을 `AGENTS.md`, `refs/tech_stack.md`, 현재 주차 문서 순서로 해석한다.
 
 ---
 
-## 가드레일 (8항목)
+## 현재 해석 규칙
 
-| # | 제약 조건 |
-|---|----------|
-| 1 | LangChain / CrewAI / AutoGen 사용 금지 |
-| 2 | 1~5주차 동안 모델 단일화 (하나만 사용) |
-| 3 | UI 개발 금지 (CLI + JSON 로그만) |
-| 4 | 도메인 데이터 지양 (범용 벤치마크만) |
-| 5 | RAG·MCP는 6주차에만 (그 전에 도입 금지) |
-| 6 | 주간 커밋 횟수 제한 없음 |
-| 7 | 새 의존성 추가 시 라이선스 확인 필수 (MIT / Apache 2.0만) |
-| 8 | 문서 없이 코드만 커밋하지 않기 (문서가 기준, 코드가 증명) |
+### 1. 런타임 기준
 
----
+- 기본 프로바이더는 `OpenAI`다.
+- 기본 모델은 `.env`의 `DEFAULT_MODEL`이다.
+- 기본 임베딩은 `text-embedding-3-small`이다.
+- `Gemini`, `Grok(xAI)`는 선택 확장이다.
+- 에이전트별 env override로 혼합 사용이 가능하다.
 
-## 커밋 컨벤션
+### 2. OpenRouter 해석
 
-```
-<type>(<scope>): <subject>
-type: docs | feat | test | fix | refactor | chore
-scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
-```
+- OpenRouter + Gemma 전환 시도는 철회됐다.
+- 과거 문서의 OpenRouter 관련 표기는 stale wording으로 처리한다.
 
----
+### 3. 실행 기준
 
-## 진행 상태 추적
+- `run_single.py`, `run_moa.py`, `run_full.py`는 `--benchmark`를 사용한다.
+- `run_full.py --output-tag`로 결과 파일 덮어쓰기를 피한다.
 
-| 주차 | 상태 | 핵심 산출물 | 완료일 |
-|------|------|------------|--------|
-| 1주차 | ✅ 완료 | logger, config, timer, docs/00~02 | 2026-04-17 |
-| 2주차 | ✅ 완료 | 스키마 3종, BaseAgent, 프롬프트 파일 | 2026-04-18 |
-| 3주차 | ✅ 완료 | 벤치마크 v1, run_single.py, 루브릭 | 2026-03-08 |
-| 4주차 | ✅ 완료 | Draft×3, Critic, Synthesizer, run_moa.py | 2026-03-12 |
-| 5주차 | ✅ 완료 | Router, Judge/Rewrite, CostTracker, run_full.py | 2026-03-13 |
-| 6주차 | ✅ 완료 | RAG, MCP, compare_runs.py, 회고 | 2026-03-14 |
-| 7주차 | 🟡 진행 중 | C7-1 스캐폴딩, C7-2 Chroma RAG, C7-3 착수 | - |
+### 4. 벤치마크 기준
+
+- `v1.json`: baseline
+- `v1_rag_mcp.json`: RAG/MCP smoke validation
+
+### 5. Planner 해석
+
+- `Planner`는 현재 코드에서 독립 런타임 모듈이 아니라 planning stage 개념이다.
 
 ---
 
-## 세부 지침 파일 (refs/)
+## 현재 진행 스냅샷
 
-| 파일 | 내용 |
-|------|------|
-| `refs/tech_stack.md` | 허용/금지 의존성, LLM 모델 정책, 라이선스 원칙 |
-| `refs/folder_structure.md` | 전체 디렉토리 트리 + 역할 설명 |
-| `refs/eval_framework.md` | 품질·시스템 지표, 비교 축, 비용 추정, 평가 프로토콜 |
+기준 시각: 2026-04-20
+
+- OpenAI 기본 런타임 복구는 완료됐다.
+- Gemini/Grok 혼합 사용을 위한 agent-level override도 반영됐다.
+- Week 8 실주행 4건은 완료됐다.
+- GPT-5 계열 chat completions 호환성 수정도 반영됐다.
+- `data/outputs/`에는 RAG 1건, MCP 1건, plain MOA 2건이 저장돼 있다.
+- Claude는 이 상태를 current progress로 인식해야 한다.
+
+실주행 재개 조건:
+
+- 현재 기준으로는 실주행 재개 조건이 아니라 결과 검토 및 후속 실험 확장 단계다.
+
+현재 확보 결과:
+
+- `rag-001` path=`moa+rag`, avg_score=`4.0`
+- `mcp-001` path=`moa+mcp`, avg_score=`4.0`
+- rag delta: `+2.25`
+- mcp delta: `+0.25`
+
+추가 상태 해석:
+
+- 위 결과는 "실주행 완료" 상태다. 단순 구현 완료가 아니다.
+- mixed-provider는 아직 실행되지 않았다.
+- GPT-5 cost estimation은 미반영 상태라 비용 숫자는 신뢰 기준이 아니다.
+- `data/outputs`, `data/traces` evidence는 로컬 기준이며 기본 git 추적 대상은 아니다.
 
 ---
 
-## 주차별 컨텍스트 파일
+## Claude용 선택지
 
-| 주차 | 계획 (상태·커밋·DoD) | 구현 (코드 설계·참고) |
-|------|---------------------|---------------------|
-| 1주차 | `week1_plan.md` | `week1_implement.md` |
-| 2주차 | `week2_plan.md` | `week2_implement.md` |
-| 3주차 | `week3_plan.md` | `week3_implement.md` |
-| 4주차 | `week4_plan.md` | `week4_implement.md` |
-| 5주차 | `week5_plan.md` | `week5_implement.md` |
-| 6주차 | `week6_plan.md` | `week6_implement.md` |
-| 7주차 | `week7_plan.md` | `week7_implement.md` |
-| 8주차 | `week8_plan.md` | `-` |
+Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
+
+1. OpenAI 기준 Week 8 snapshot 유지
+2. Gemini/Grok를 `draft_*`에 분배해 mixed-provider 확장 실험
+3. 운영 보강
+   - GPT-5 pricing 반영
+   - evidence commit 정책 정리
+   - 추가 benchmark 확장
+
+금지 해석:
+
+- "RAG/MCP는 아직 구현 전"으로 읽지 말 것
+- "OpenRouter가 현재 기본값"으로 읽지 말 것
 
 ---
 
-## 사용 안내
+## 에이전트별 override 힌트
 
-1. **항상 이 파일(`claude.md`)을 첨부**
-2. **현재 주차의 `weekN_plan.md` + `weekN_implement.md`를 함께 첨부**
-3. 이전 주차가 ✅ 완료인지 확인 후 작업 시작
-4. 세부 스택·구조·평가 정보가 필요하면 `refs/` 파일 참조
-5. 작업 완료 후 진행 상태 테이블 업데이트
+자주 쓰는 prefix:
+
+- `SINGLE_*`
+- `ROUTER_*`
+- `DRAFT_ANALYTICAL_*`
+- `DRAFT_CREATIVE_*`
+- `DRAFT_STRUCTURED_*`
+- `CRITIC_*`
+- `SYNTH_*`
+- `JUDGE_*`
+- `REWRITE_*`
+- `EVAL_*`
+
+예:
+
+- `DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini`
+- `DRAFT_CREATIVE_MODEL_PROVIDER=xai`
+- `EVAL_MODEL_PROVIDER=openai`
+
+---
+
+## 변경 기록
+
+### 2026-04-20
+
+- OpenAI 기본 복구와 Gemini/Grok 혼합 사용 규칙을 반영했다.
+- OpenRouter 문구를 현재 기준에서 제외했다.
+- Week 8 실주행 완료 상태와 비교 결과를 반영했다.
+- 현재 선택지와 미완료 항목 해석 규칙을 추가했다.

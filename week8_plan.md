@@ -87,6 +87,8 @@ python scripts/compare_runs.py --dir data/outputs --format table
 - `data/traces/`에 현재 기준 trace 4건이 저장됐다.
 - GPT-5 계열 chat completions 호환성 패치를 적용했다.
 - `compare_runs.py` import 경로 버그를 수정했다.
+- GPT-5 pricing을 코드에 반영했다.
+- evaluation은 `EVAL_MODEL=gpt-4o-mini` override로 안정화해 baseline 산출물을 다시 생성했다.
 
 ### 현재 블로커
 
@@ -105,24 +107,28 @@ python scripts/compare_runs.py --dir data/outputs --format table
   - path: `moa+rag`
   - retriever: `ChromaRetriever`
   - fallback: 없음
-  - evaluation avg_score: `4.0`
+  - evaluation avg_score: `5.0`
+  - cost_estimate: `0.002898`
 - `mcp-001`
   - path: `moa+mcp`
   - server: `filesystem`
   - tool: `list_directory`
   - success: `true`
-  - evaluation avg_score: `4.0`
+  - evaluation avg_score: `5.0`
+  - cost_estimate: `0.000812`
 
 ### 비교 결과
 
 - rag group
-  - `avg_score_delta=2.25`
-  - `avg_latency_delta=9434.95`
-  - `avg_tokens_delta=5759.0`
+  - `avg_score_delta=1.0`
+  - `avg_cost_delta=0.000196`
+  - `avg_latency_delta=152.23`
+  - `avg_tokens_delta=768.0`
 - mcp group
-  - `avg_score_delta=0.25`
-  - `avg_latency_delta=-5101.43`
-  - `avg_tokens_delta=-1516.0`
+  - `avg_score_delta=4.0`
+  - `avg_cost_delta=-0.001264`
+  - `avg_latency_delta=-12806.22`
+  - `avg_tokens_delta=-5964.0`
 
 ### 현재 구현 범위 해석
 
@@ -139,7 +145,6 @@ python scripts/compare_runs.py --dir data/outputs --format table
 아직 후속 작업으로 남음:
 
 - mixed-provider 실험 실제 수행
-- GPT-5 pricing 반영
 - evidence를 git에 포함할지 정책 결정
 
 ### 현재 선택지
@@ -147,6 +152,11 @@ python scripts/compare_runs.py --dir data/outputs --format table
 1. 현재 결과를 Week 8 baseline으로 고정하고 커밋/푸시
 2. mixed-provider 실험을 추가 수행
 3. 비용/운영 정합성 보강
+
+현재 활성 선택:
+
+- `2`는 provider key가 없어서 즉시 실행 불가
+- 현재는 `3`을 진행 중이며, pricing 반영과 evaluation 안정화는 완료됐다
 
 ### 블로커 해소 후 즉시 실행할 명령
 
@@ -178,3 +188,4 @@ python scripts/compare_runs.py --dir data/outputs --format table
 - OpenRouter + Gemma 기준 문구를 제거했다.
 - OpenAI 키 확인 후 Week 8 실주행 4건과 비교 결과를 반영했다.
 - 현재 구현 범위와 후속 선택지를 추가했다.
+- GPT-5 pricing 반영과 evaluation override 기반 snapshot 재생성을 반영했다.

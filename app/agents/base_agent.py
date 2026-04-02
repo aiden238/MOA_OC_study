@@ -4,6 +4,7 @@ import asyncio
 
 import httpx
 
+from app.core.cost_tracker import estimate_token_cost
 from app.core.config import (
     DEFAULT_TEMPERATURE,
     MAX_RETRIES,
@@ -43,16 +44,29 @@ class BaseAgent:
         return status_code == 429 or 500 <= status_code < 600
 
     @staticmethod
+    def _is_reasoning_model(provider: str, model: str) -> bool:
+        """Return True for models that produce reasoning_content."""
+        if provider == "openai":
+            return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
+        if provider == "zai":
+            return True  # glm-4.7 series are reasoning models
+        return False
+
+    @staticmethod
     def _uses_max_completion_tokens(provider: str, model: str) -> bool:
-        if provider != "openai":
-            return False
-        return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
+        if provider == "openai":
+            return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
+        if provider == "zai":
+            return True
+        return False
 
     @staticmethod
     def _supports_custom_temperature(provider: str, model: str) -> bool:
-        if provider != "openai":
-            return True
-        return not model.startswith("gpt-5")
+        if provider == "zai":
+            return False  # ZAI reasoning models don't support custom temperature
+        if provider == "openai":
+            return not model.startswith("gpt-5")
+        return True
 
     @staticmethod
     def _default_reasoning_effort(provider: str, model: str) -> str | None:
@@ -133,7 +147,10 @@ class BaseAgent:
         if self._supports_custom_temperature(provider, model):
             payload["temperature"] = agent_input.temperature
         if self._uses_max_completion_tokens(provider, model):
-            payload["max_completion_tokens"] = agent_input.max_tokens
+            effective_max = agent_input.max_tokens
+            if self._is_reasoning_model(provider, model) and effective_max < 4096:
+                effective_max = 4096  # reasoning models need headroom for CoT
+            payload["max_completion_tokens"] = effective_max
             resolved_reasoning_effort = reasoning_effort or self._default_reasoning_effort(
                 provider, model
             )
@@ -181,7 +198,10 @@ class BaseAgent:
             else:
                 raise RuntimeError("Chat completion request failed without a response") from last_exc
 
-        choice = data["choices"][0]["message"]["content"]
+        msg = data["choices"][0]["message"]
+        choice = msg.get("content") or ""
+        if not choice and msg.get("reasoning_content"):
+            choice = msg["reasoning_content"]
         usage = data.get("usage", {})
         return {
             "content": choice,
@@ -193,12 +213,7 @@ class BaseAgent:
 
     @staticmethod
     def _estimate_cost(prompt_tokens: int, completion_tokens: int, model: str) -> float:
-        pricing = {
-            "gpt-4o-mini": (0.15 / 1_000_000, 0.60 / 1_000_000),
-            "gpt-4o": (2.50 / 1_000_000, 10.00 / 1_000_000),
-        }
-        input_rate, output_rate = pricing.get(model, (0.0, 0.0))
-        return round(prompt_tokens * input_rate + completion_tokens * output_rate, 6)
+        return estimate_token_cost(model, prompt_tokens, completion_tokens)
 
     @classmethod
     def load_prompt(cls, prompt_name: str) -> str:

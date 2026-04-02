@@ -148,8 +148,8 @@
 
 아직 남은 것:
 
-- mixed-provider 실험은 구성만 가능하고 아직 실주행하지 않음
-- GPT-5 계열 pricing table은 아직 코드에 반영되지 않아 `cost_estimate`가 `0.0`일 수 있음
+- mixed-provider 실험은 구성만 가능하지만 `GEMINI_API_KEY`, `XAI_API_KEY`가 없으면 즉시 실행 불가
+- GPT-5 계열 pricing table은 코드에 반영됐고, 현재 baseline evidence는 비용 포함 상태로 갱신됐다
 - 실주행 evidence 파일은 로컬에 있으나 `data/outputs`, `data/traces`는 gitignored 상태
 
 로컬 evidence:
@@ -172,6 +172,7 @@ Claude는 현재 상태를 아래 셋 중 하나의 분기점으로 이해한다
 주의:
 
 - mixed-provider는 "지원됨"이지 "이미 실행됨"이 아니다.
+- Gemini/Grok 키가 없으면 mixed-provider 분기를 현재 활성 플랜으로 잡지 않는다.
 - OpenRouter 기준으로 되돌아가거나, OpenRouter를 현재 기본값으로 가정하면 안 된다.
 
 ---
@@ -229,3 +230,4 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 - Gemini와 Grok를 에이전트별 env override로 혼합 사용할 수 있게 기준을 재정의했다.
 - OpenRouter 관련 문구를 현재 기준에서 제외하고 stale wording으로 명시했다.
 - 현재 구현 체크포인트와 Claude용 후속 선택지를 추가했다.
+- GPT-5 pricing 반영과 evaluation 안정화 진행 상태를 추가했다.

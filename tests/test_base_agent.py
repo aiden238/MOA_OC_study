@@ -140,6 +140,11 @@ class TestCostEstimation:
         expected = 1000 * (0.15 / 1_000_000) + 500 * (0.60 / 1_000_000)
         assert cost == round(expected, 6)
 
+    def test_gpt5_nano_snapshot_cost(self):
+        cost = BaseAgent._estimate_cost(1000, 500, "gpt-5-nano-2025-08-07")
+        expected = 1000 * (0.05 / 1_000_000) + 500 * (0.40 / 1_000_000)
+        assert cost == round(expected, 6)
+
     def test_unknown_model_zero_cost(self):
         cost = BaseAgent._estimate_cost(1000, 500, "unknown-model")
         assert cost == 0.0

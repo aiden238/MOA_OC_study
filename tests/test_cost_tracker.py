@@ -1,6 +1,6 @@
-"""CostTracker C7-1 확장 테스트."""
+"""CostTracker tests."""
 
-from app.core.cost_tracker import CostTracker
+from app.core.cost_tracker import CostTracker, estimate_token_cost
 
 
 class TestCostTracker:
@@ -45,3 +45,14 @@ class TestCostTracker:
         )
         assert cost == 0.0
         assert tracker.summary()["by_operation_type"]["mcp_tool"]["tokens"] == 0
+
+    def test_gpt5_snapshot_pricing_is_supported(self):
+        tracker = CostTracker()
+        cost = tracker.add(
+            model="gpt-5-nano-2025-08-07",
+            prompt_tokens=1000,
+            completion_tokens=500,
+            path="single",
+            agent_name="single_baseline",
+        )
+        assert cost == estimate_token_cost("gpt-5-nano-2025-08-07", 1000, 500)

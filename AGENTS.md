@@ -38,9 +38,10 @@
 - 기본 호출 형식은 chat completions 기반 OpenAI-compatible API다.
 - 실제 기본 모델명은 `.env`의 `DEFAULT_MODEL`을 source of truth로 본다.
 - 기본 임베딩 경로는 `OpenAI`의 `text-embedding-3-small`이다.
-- `Gemini`와 `Grok(xAI)`는 기본값이 아니라 선택 확장이다.
-- 에이전트별 env override를 통해 한 파이프라인 안에서 OpenAI, Gemini, Grok를 혼합 사용할 수 있다.
+- `Gemini`와 `Z.AI(Zhipu/GLM)`는 기본값이 아니라 선택 확장이다.
+- 에이전트별 env override를 통해 한 파이프라인 안에서 OpenAI, Gemini, Z.AI를 혼합 사용할 수 있다.
 - 2026-04-20의 OpenRouter + Gemma 전환 시도는 철회됐다. 그 표기는 현재 기준이 아니다.
+- `glm-4.7-flash`(Z.AI)는 reasoning model이다. `reasoning_content` fallback과 `max_completion_tokens` 최소 4096이 `base_agent.py`에 구현돼 있다.
 
 ### 환경 변수 기준
 
@@ -59,8 +60,8 @@
 
 - `GEMINI_API_KEY`
 - `GEMINI_BASE_URL`
-- `XAI_API_KEY`
-- `XAI_BASE_URL`
+- `ZAI_API_KEY`
+- `ZAI_BASE_URL`
 
 에이전트별 override:
 
@@ -148,7 +149,7 @@
 
 아직 남은 것:
 
-- mixed-provider 실험은 구성만 가능하지만 `GEMINI_API_KEY`, `XAI_API_KEY`가 없으면 즉시 실행 불가
+- mixed-provider 실험 구성 완료: `ZAI_API_KEY`(Zhipu GLM-4.7-flash) 실주행 검증됨. `GEMINI_API_KEY`는 free tier quota 소진으로 현재 비활성
 - GPT-5 계열 pricing table은 코드에 반영됐고, 현재 baseline evidence는 비용 포함 상태로 갱신됐다
 - 실주행 evidence 파일은 로컬에 있으나 `data/outputs`, `data/traces`는 gitignored 상태
 
@@ -198,8 +199,10 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 | 4주차 | 완료 | Draft x3, Critic, Synthesizer, run_moa.py | 2026-03-12 |
 | 5주차 | 완료 | Router, Judge/Rewrite, CostTracker, run_full.py | 2026-03-13 |
 | 6주차 | 완료 | RAG, MCP, compare_runs.py, 회고 | 2026-03-14 |
-| 7주차 | 진행 중 | C7-1 스캐폴딩, C7-2 Chroma RAG, C7-3 Filesystem MCP | - |
-| 8주차 | 진행 중 | 실주행 검증, 평가 보강, 문서 정합성 보정 | - |
+| 7주차 | 완료 | C7-1 routing trace, C7-2 ChromaRetriever, C7-3 Filesystem MCP | 2026-04-20 |
+| 8주차 | 완료 | RAG/MCP 실주행 4건, 평가 보강, GPT-5 호환 패치 | 2026-04-20 |
+| 9주차 | 완료 | baseline 12건 sweep, RAG/MCP 각 3건, 3-group 비교표 | 2026-04-20 |
+| 10주차 | 진행 중 | Z.AI GLM 통합, 3-provider MOA, Web UI 계획 | - |
 
 ---
 
@@ -231,3 +234,7 @@ scope: core | schemas | agents | orchestrator | eval | rag | mcp | scripts
 - OpenRouter 관련 문구를 현재 기준에서 제외하고 stale wording으로 명시했다.
 - 현재 구현 체크포인트와 Claude용 후속 선택지를 추가했다.
 - GPT-5 pricing 반영과 evaluation 안정화 진행 상태를 추가했다.
+- Grok(xAI) → Z.AI(Zhipu/GLM)로 provider 교체. `XAI_API_KEY` → `ZAI_API_KEY`.
+- `glm-4.7-flash` reasoning model 패치 반영 (reasoning_content fallback, max_completion_tokens 4096 headroom).
+- 7/8/9주차 완료 상태로 갱신, 10주차 추가.
+- 주간 커밋 제한 해제 반영 완료.

@@ -14,8 +14,9 @@
 - 기본 프로바이더는 `OpenAI`다.
 - 기본 모델은 `.env`의 `DEFAULT_MODEL`이다.
 - 기본 임베딩은 `text-embedding-3-small`이다.
-- `Gemini`, `Grok(xAI)`는 선택 확장이다.
+- `Gemini`, `Z.AI(Zhipu/GLM)`는 선택 확장이다 (Grok/xAI는 Z.AI로 교체됨).
 - 에이전트별 env override로 혼합 사용이 가능하다.
+- `glm-4.7-flash`는 reasoning model: `base_agent.py`에 reasoning_content fallback 및 max_completion_tokens 4096 headroom 구현됨.
 
 ### 2. OpenRouter 해석
 
@@ -106,7 +107,7 @@ Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
 예:
 
 - `DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini`
-- `DRAFT_CREATIVE_MODEL_PROVIDER=xai`
+- `DRAFT_CREATIVE_MODEL_PROVIDER=zai`
 - `EVAL_MODEL_PROVIDER=openai`
 
 ---
@@ -120,4 +121,8 @@ Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
 - Week 8 실주행 완료 상태와 비교 결과를 반영했다.
 - 현재 선택지와 미완료 항목 해석 규칙을 추가했다.
 - pricing 반영 완료와 evaluation override 기반 baseline 갱신을 추가했다.
-- ✅ 9주차 완료: baseline sweep 12건(single/moa) 실행, RAG/MCP 각 3건 확장 실행, 3-group 비교표 `data/outputs/comparison_w9_final.csv` 생성, 회고는 `docs/06_experiment_log.md` Week 9 섹션 참고.
+- ✅ 9주차 완료: baseline sweep 12건(single/moa) 실행, RAG/MCP 각 3건 확장 실행, 3-group 비교표 `data/outputs/comparison_w9_final.csv` 생성.
+- Grok(xAI) → Z.AI(Zhipu) 교체. `ZAI_API_KEY` + `glm-4.7-flash` 실주행 검증 완료.
+- `base_agent.py`: ZAI reasoning model 지원 추가 (reasoning_content fallback, max_completion_tokens 4096, temperature 비활성).
+- 주간 커밋 제한 해제 (AGENTS.md 가드레일 #6 "제한 없음").
+- Gemini API key free tier quota 소진 → 현재 비활성. billing 설정 후 재활성 가능.

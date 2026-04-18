@@ -24,10 +24,11 @@ from app.agents.base_agent import BaseAgent
 from app.core.config import OUTPUT_DIR
 from app.core.cost_tracker import CostTracker
 from app.core.logger import TraceLogger, generate_run_id
-from app.orchestrator.executor import MOAExecutor, build_moa_summary
+from app.orchestrator.executor import MOAExecutor
 from app.orchestrator.router import Router, RoutingDecision
 from app.schemas.agent_io import AgentOutput
 from app.schemas.task import TaskRequest
+from app.schemas.trace import CaseResult
 from scripts.run_single import load_benchmark, case_to_task
 
 
@@ -54,6 +55,7 @@ async def run_single_path(
         latency_ms=output.latency_ms,
         cost_estimate=output.cost_estimate,
         path="single",
+        operation_type="llm_completion",
     )
 
     # 비용 집계
@@ -63,6 +65,7 @@ async def run_single_path(
         completion_tokens=output.completion_tokens,
         path="single",
         agent_name=output.agent_name,
+        operation_type="llm_completion",
     )
 
     return output.content, [output]
@@ -72,10 +75,11 @@ async def run_moa_path(
     task: TaskRequest,
     logger: TraceLogger,
     cost_tracker: CostTracker,
+    routing: RoutingDecision | None = None,
 ) -> tuple[str, list[AgentOutput]]:
     """moa 경로 — Draft×3 → Critic → Synthesizer → Judge → (Rewrite)."""
     executor = MOAExecutor()
-    final_text, all_outputs = await executor.execute(task, logger)
+    final_text, all_outputs = await executor.execute(task, logger, routing=routing)
 
     # 각 에이전트 출력을 비용 트래커에 등록
     for output in all_outputs:
@@ -85,6 +89,7 @@ async def run_moa_path(
             completion_tokens=output.completion_tokens,
             path="moa",
             agent_name=output.agent_name,
+            operation_type="llm_completion",
         )
 
     return final_text, all_outputs
@@ -98,8 +103,9 @@ def save_full_output(
     out_dir = output_dir or OUTPUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     file_path = out_dir / f"full_{result['case_id']}.json"
+    payload = CaseResult(**result).model_dump()
     with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+        json.dump(payload, f, ensure_ascii=False, indent=2)
     return file_path
 
 
@@ -117,6 +123,9 @@ def print_cost_report(cost_tracker: CostTracker):
     print(f"\n  경로별 집계:")
     for path, data in s["by_path"].items():
         print(f"    [{path}] {data['tokens']:,} tokens, ${data['cost']:.6f}")
+    print(f"\n  연산 유형별 집계:")
+    for operation_type, data in s["by_operation_type"].items():
+        print(f"    [{operation_type}] {data['tokens']:,} tokens, ${data['cost']:.6f}")
     print(f"{'='*50}")
 
 
@@ -163,7 +172,7 @@ async def run_pipeline(
         if decision.selected_path == "single":
             final_text, outputs = await run_single_path(task, logger, cost_tracker)
         else:
-            final_text, outputs = await run_moa_path(task, logger, cost_tracker)
+            final_text, outputs = await run_moa_path(task, logger, cost_tracker, routing=decision)
 
         # 결과 저장
         result = {
@@ -180,6 +189,19 @@ async def run_pipeline(
             "completion_tokens": sum(o.completion_tokens for o in outputs),
             "latency_ms": round(sum(o.latency_ms for o in outputs), 2),
             "cost_estimate": round(sum(o.cost_estimate for o in outputs), 6),
+            "constraints": task.constraints,
+            "evaluation": {},
+            "evaluation_context": {},
+            "context_metadata": {
+                "routing": {
+                    "requires_rag": decision.requires_rag,
+                    "requires_mcp": decision.requires_mcp,
+                    "rag_query_hint": decision.rag_query_hint,
+                    "mcp_intent": decision.mcp_intent,
+                    "preferred_server": decision.preferred_server,
+                    "preferred_tool": decision.preferred_tool,
+                }
+            },
         }
         save_full_output(result, output_dir)
 

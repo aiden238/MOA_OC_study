@@ -26,6 +26,10 @@ class RoutingDecision(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)  # 판정 확신도 (0.0~1.0)
     requires_rag: bool = False                 # RAG 컨텍스트 주입 여부
     requires_mcp: bool = False                 # MCP 도구 호출 여부
+    rag_query_hint: str | None = None          # RAG 질의 힌트
+    mcp_intent: str | None = None              # MCP 호출 의도
+    preferred_server: str | None = None        # 선호 MCP 서버
+    preferred_tool: str | None = None          # 선호 MCP 도구
 
 
 def rule_based_route(task: TaskRequest) -> RoutingDecision | None:
@@ -83,6 +87,7 @@ def rule_based_route(task: TaskRequest) -> RoutingDecision | None:
             reason="constraints에 source:rag_docs 포함 → RAG 필요",
             confidence=0.95,
             requires_rag=True,
+            rag_query_hint=task.prompt,
         )
 
     # MCP 필요성: 외부 도구 필요 키워드(파일 목록, 웹 검색, 현재 날씨 등)
@@ -93,6 +98,9 @@ def rule_based_route(task: TaskRequest) -> RoutingDecision | None:
             reason="프롬프트에 외부 도구 필요 키워드 포함 → MCP 필요",
             confidence=0.9,
             requires_mcp=True,
+            mcp_intent="filesystem_lookup",
+            preferred_server="filesystem",
+            preferred_tool="list_files",
         )
 
     # 애매한 경우 → None (2단계 LLM 판별 필요)
@@ -106,7 +114,7 @@ _ROUTER_SYSTEM_PROMPT = """당신은 태스크 라우팅 전문가입니다.
 아울러 요청에 RAG(문서 검색)이나 MCP(외부 도구 호출)가 필요한지 여부도 판별해 주십시오.
 
 반드시 아래 JSON 형식으로만 응답하세요:
-{"selected_path": "single|moa", "reason": "판단 근거", "confidence": 0.0~1.0, "requires_rag": false, "requires_mcp": false}
+{"selected_path": "single|moa", "reason": "판단 근거", "confidence": 0.0~1.0, "requires_rag": false, "requires_mcp": false, "rag_query_hint": null, "mcp_intent": null, "preferred_server": null, "preferred_tool": null}
 """
 
 
@@ -136,6 +144,10 @@ async def llm_route(task: TaskRequest) -> RoutingDecision:
             confidence=float(data.get("confidence", 0.5)),
             requires_rag=bool(data.get("requires_rag", False)),
             requires_mcp=bool(data.get("requires_mcp", False)),
+            rag_query_hint=data.get("rag_query_hint"),
+            mcp_intent=data.get("mcp_intent"),
+            preferred_server=data.get("preferred_server"),
+            preferred_tool=data.get("preferred_tool"),
         )
     except (json.JSONDecodeError, KeyError):
         # 파싱 실패 시 안전한 기본값 — moa 경로 (더 안전한 선택)
@@ -145,6 +157,10 @@ async def llm_route(task: TaskRequest) -> RoutingDecision:
             confidence=0.5,
             requires_rag=False,
             requires_mcp=False,
+            rag_query_hint=None,
+            mcp_intent=None,
+            preferred_server=None,
+            preferred_tool=None,
         )
 
 

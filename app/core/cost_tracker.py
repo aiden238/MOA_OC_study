@@ -4,6 +4,8 @@
 경로별(single/moa) 비용 분석을 지원한다.
 """
 
+from typing import Any
+
 
 class CostTracker:
     """LLM 호출 비용을 모델·경로별로 집계하는 트래커."""
@@ -33,6 +35,9 @@ class CostTracker:
         completion_tokens: int,
         path: str = "unknown",
         agent_name: str = "",
+        operation_type: str = "llm_completion",
+        metadata: dict[str, Any] | None = None,
+        cost_override: float | None = None,
     ) -> float:
         """호출 1건의 비용을 집계하고 추정 비용을 반환.
 
@@ -47,9 +52,12 @@ class CostTracker:
             해당 호출의 추정 비용 (USD)
         """
         pricing = self.PRICING.get(model, {"prompt": 0.0, "completion": 0.0})
-        cost = (prompt_tokens * pricing["prompt"]
-                + completion_tokens * pricing["completion"])
-        cost = round(cost, 6)
+        if cost_override is None:
+            cost = (prompt_tokens * pricing["prompt"]
+                    + completion_tokens * pricing["completion"])
+            cost = round(cost, 6)
+        else:
+            cost = round(cost_override, 6)
 
         self._records.append({
             "model": model,
@@ -58,6 +66,8 @@ class CostTracker:
             "cost": cost,
             "path": path,
             "agent_name": agent_name,
+            "operation_type": operation_type,
+            "metadata": metadata or {},
         })
 
         self._total_prompt += prompt_tokens
@@ -71,11 +81,19 @@ class CostTracker:
         # 경로별 비용 집계
         path_costs: dict[str, float] = {}
         path_tokens: dict[str, int] = {}
+        operation_costs: dict[str, float] = {}
+        operation_tokens: dict[str, int] = {}
         for r in self._records:
             p = r["path"]
             path_costs[p] = path_costs.get(p, 0.0) + r["cost"]
             path_tokens[p] = (path_tokens.get(p, 0)
                               + r["prompt_tokens"] + r["completion_tokens"])
+            op = r["operation_type"]
+            operation_costs[op] = operation_costs.get(op, 0.0) + r["cost"]
+            operation_tokens[op] = (
+                operation_tokens.get(op, 0)
+                + r["prompt_tokens"] + r["completion_tokens"]
+            )
 
         return {
             "total_prompt_tokens": self._total_prompt,
@@ -89,6 +107,13 @@ class CostTracker:
                     "cost": round(path_costs[path], 6),
                 }
                 for path in path_costs
+            },
+            "by_operation_type": {
+                operation_type: {
+                    "tokens": operation_tokens[operation_type],
+                    "cost": round(operation_costs[operation_type], 6),
+                }
+                for operation_type in operation_costs
             },
         }
 

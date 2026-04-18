@@ -83,6 +83,33 @@ class TestRunFullPipeline:
         assert text == "MOA 최종 결과"
         assert len(outputs) == 6  # 3 draft + critic + synth + judge
 
+    @pytest.mark.asyncio
+    async def test_moa_path_passes_routing(self):
+        """run_moa_path가 routing decision을 executor까지 전달하는지 확인."""
+        mock_outputs = [_mock_output("draft_analytical", "MOA 결과")]
+        routing = RoutingDecision(
+            selected_path="moa",
+            reason="routing 전달 테스트",
+            confidence=0.9,
+            requires_rag=True,
+            rag_query_hint="test query",
+        )
+
+        with patch("scripts.run_full.MOAExecutor") as MockExecutor:
+            executor = AsyncMock()
+            executor.execute.return_value = ("MOA 결과", mock_outputs)
+            MockExecutor.return_value = executor
+
+            task = TaskRequest(prompt="문서 기반 질문", task_type="explain")
+            logger = TraceLogger(run_id="test-moa-routing")
+            tracker = CostTracker()
+
+            text, outputs = await run_moa_path(task, logger, tracker, routing=routing)
+
+        assert text == "MOA 결과"
+        assert outputs == mock_outputs
+        executor.execute.assert_awaited_once_with(task, logger, routing=routing)
+
     def test_save_full_output(self, tmp_path):
         """결과 JSON이 올바르게 저장되는지 확인."""
         result = {
@@ -105,6 +132,9 @@ class TestRunFullPipeline:
         loaded = json.loads(path.read_text(encoding="utf-8"))
         assert loaded["case_id"] == "test-001"
         assert loaded["output"] == "결과"
+        assert loaded["evaluation"] == {}
+        assert loaded["evaluation_context"] == {}
+        assert loaded["context_metadata"] == {}
 
     def test_router_single_case(self):
         """summarize + low difficulty → single 경로로 라우팅되는지 확인."""

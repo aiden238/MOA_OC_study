@@ -6,9 +6,12 @@ from app.eval.metrics import compare_metrics, compute_metrics, compute_metrics_f
 from app.eval.rubric import (
     RUBRIC_DIMENSIONS,
     build_judge_message,
+    evaluate_single,
     parse_judge_response,
 )
 from app.schemas.trace import RunSummary, TraceRecord
+from app.schemas.agent_io import AgentOutput
+from unittest.mock import AsyncMock, patch
 
 
 class TestBuildJudgeMessage:
@@ -23,6 +26,19 @@ class TestBuildJudgeMessage:
         msg = build_judge_message("요약하세요", "결과", {"max_sentences": 3})
         assert "[제약 조건]" in msg
         assert "max_sentences" in msg
+
+    def test_message_with_path_and_context(self):
+        msg = build_judge_message(
+            "문서 기반 답변",
+            "결과",
+            path="moa+rag",
+            evaluation_context={"retrieval_context": "doc chunk"},
+        )
+        assert "[실행 경로]" in msg
+        assert "moa+rag" in msg
+        assert "[추가 평가 항목]" in msg
+        assert "groundedness" in msg
+        assert "[평가 컨텍스트]" in msg
 
 
 class TestParseJudgeResponse:
@@ -61,6 +77,47 @@ class TestParseJudgeResponse:
         scores = parse_judge_response(response)
         assert scores["clarity"] == 4
         assert isinstance(scores["clarity"], int)
+
+    def test_rag_specific_metrics_allow_not_evaluable(self):
+        response = (
+            '{"clarity": 4, "structure": 4, "constraint_following": 4, '
+            '"usefulness": 4, "groundedness": "not_evaluable", '
+            '"citation_traceability": 5}'
+        )
+        scores = parse_judge_response(response, path="moa+rag")
+        assert scores["groundedness"] == "not_evaluable"
+        assert scores["citation_traceability"] == 5
+
+
+class TestEvaluateSingle:
+    @pytest.mark.asyncio
+    async def test_evaluate_single_supports_path_and_context(self):
+        mock_output = AgentOutput(
+            agent_name="rubric_judge",
+            content=(
+                '{"clarity": 4, "structure": 4, "constraint_following": 5, '
+                '"usefulness": 4, "groundedness": 4, '
+                '"citation_traceability": "not_evaluable"}'
+            ),
+            model="gpt-4o-mini",
+            prompt_tokens=25,
+            completion_tokens=15,
+            latency_ms=50.0,
+            cost_estimate=0.0001,
+        )
+
+        with patch("app.eval.rubric.BaseAgent.run", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = mock_output
+            scores = await evaluate_single(
+                prompt="문서 기반 설명",
+                output="답변",
+                path="moa+rag",
+                evaluation_context={"retrieval_context": "chunk"},
+            )
+
+        assert scores["path"] == "moa+rag"
+        assert scores["groundedness"] == 4
+        assert scores["citation_traceability"] == "not_evaluable"
 
 
 class TestComputeMetrics:

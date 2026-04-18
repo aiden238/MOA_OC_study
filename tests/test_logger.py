@@ -116,9 +116,27 @@ class TestTraceLogger:
         required_fields = {
             "run_id", "agent_name", "model", "input_prompt", "output_text",
             "prompt_tokens", "completion_tokens", "latency_ms",
-            "cost_estimate", "timestamp", "path",
+            "cost_estimate", "timestamp", "path", "operation_type", "metadata",
         }
         assert required_fields.issubset(record.keys())
+
+    def test_log_supports_operation_type_and_metadata(self):
+        logger = TraceLogger(run_id="op-test")
+        record = logger.log(
+            agent_name="retriever",
+            model="gpt-4o-mini",
+            input_prompt="query",
+            output_text="context",
+            prompt_tokens=0,
+            completion_tokens=0,
+            latency_ms=5.0,
+            cost_estimate=0.0,
+            path="moa+rag",
+            operation_type="rag",
+            metadata={"stage": "retrieval", "hits": 3},
+        )
+        assert record["operation_type"] == "rag"
+        assert record["metadata"]["stage"] == "retrieval"
 
 
 class TestTimer:

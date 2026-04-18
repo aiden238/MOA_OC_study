@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.schemas import (
     AgentInput,
     AgentOutput,
+    CaseResult,
     RunSummary,
     TaskPlan,
     TaskRequest,
@@ -106,6 +107,8 @@ class TestTraceRecord:
             path="moa",
         )
         assert rec.path == "moa"
+        assert rec.operation_type == "llm_completion"
+        assert rec.metadata == {}
 
     def test_missing_fields_raises(self):
         with pytest.raises(ValidationError):
@@ -140,3 +143,17 @@ class TestRunSummary:
         )
         assert summary.agent_count == 1
         assert len(summary.traces) == 1
+
+
+class TestCaseResult:
+    def test_defaults(self):
+        result = CaseResult(
+            case_id="case-001",
+            task_type="explain",
+            prompt="prompt",
+            output="output",
+        )
+        assert result.path == "moa"
+        assert result.evaluation == {}
+        assert result.evaluation_context == {}
+        assert result.context_metadata == {}

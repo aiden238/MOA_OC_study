@@ -110,6 +110,11 @@ class TestLLMRoute:
             "selected_path": "moa",
             "reason": "복합 과제",
             "confidence": 0.75,
+            "requires_rag": True,
+            "rag_query_hint": "문서 기반 검색 질의",
+            "mcp_intent": "filesystem_lookup",
+            "preferred_server": "filesystem",
+            "preferred_tool": "list_files",
         })
         mock_output = AgentOutput(
             agent_name="router",
@@ -127,6 +132,11 @@ class TestLLMRoute:
 
         assert decision.selected_path == "moa"
         assert decision.confidence == 0.75
+        assert decision.requires_rag is True
+        assert decision.rag_query_hint == "문서 기반 검색 질의"
+        assert decision.mcp_intent == "filesystem_lookup"
+        assert decision.preferred_server == "filesystem"
+        assert decision.preferred_tool == "list_files"
 
     @pytest.mark.asyncio
     async def test_llm_route_parse_failure_defaults_to_moa(self):
@@ -147,6 +157,8 @@ class TestLLMRoute:
 
         assert decision.selected_path == "moa"
         assert "파싱 실패" in decision.reason
+        assert decision.rag_query_hint is None
+        assert decision.preferred_tool is None
 
 
 # ── Router 통합 테스트 ──
@@ -202,6 +214,8 @@ class TestRoutingDecision:
         assert d.selected_path == "moa"
         assert d.requires_rag is False
         assert d.requires_mcp is False
+        assert d.rag_query_hint is None
+        assert d.preferred_server is None
 
     def test_confidence_bounds(self):
         """confidence 범위 위반 시 ValidationError."""

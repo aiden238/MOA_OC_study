@@ -5,7 +5,7 @@
 
 from app.schemas.agent_io import AgentInput, AgentOutput, JudgeDecision
 from app.schemas.task import TaskPlan, TaskRequest
-from app.schemas.trace import RunSummary, TraceRecord
+from app.schemas.trace import CaseResult, RunSummary, TraceRecord
 
 __all__ = [
     "TaskRequest",
@@ -14,5 +14,6 @@ __all__ = [
     "AgentOutput",
     "JudgeDecision",
     "TraceRecord",
+    "CaseResult",
     "RunSummary",
 ]

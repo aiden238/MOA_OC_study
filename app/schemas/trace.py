@@ -1,10 +1,13 @@
-"""트레이스 스키마 — TraceRecord, RunSummary.
+"""트레이스 스키마 — TraceRecord, CaseResult, RunSummary.
 
 TraceRecord: 개별 에이전트 호출 1건의 추적 기록
+CaseResult: 개별 벤치마크 케이스 결과 저장 모델
 RunSummary:  한 번의 실행(run) 전체를 요약하는 집계 모델
 """
 
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class TraceRecord(BaseModel):
@@ -20,6 +23,30 @@ class TraceRecord(BaseModel):
     cost_estimate: float    # 추정 비용 (USD)
     timestamp: str          # 호출 시각 (ISO 형식)
     path: str               # 실행 경로 ("single" | "moa" | "full")
+    operation_type: str = "llm_completion"  # 연산 유형
+    metadata: dict[str, Any] = Field(default_factory=dict)  # 추가 메타데이터
+
+
+class CaseResult(BaseModel):
+    """개별 케이스 결과 저장 모델."""
+
+    case_id: str
+    task_type: str
+    prompt: str
+    output: str
+    path: str = "moa"
+    routing_reason: str = ""
+    routing_confidence: float = 0.0
+    agent_count: int = 0
+    agents: list[str] = Field(default_factory=list)
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    latency_ms: float = 0.0
+    cost_estimate: float = 0.0
+    constraints: dict[str, Any] = Field(default_factory=dict)
+    evaluation: dict[str, Any] = Field(default_factory=dict)
+    evaluation_context: dict[str, Any] = Field(default_factory=dict)
+    context_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class RunSummary(BaseModel):

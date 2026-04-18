@@ -39,6 +39,8 @@ class TraceLogger:
         latency_ms: float,     # 응답 지연 시간 (ms)
         cost_estimate: float = 0.0,  # 추정 비용 (USD)
         path: str = "single",  # 실행 경로 (single/moa/full)
+        operation_type: str = "llm_completion",  # 연산 유형
+        metadata: dict[str, Any] | None = None,  # 추가 메타데이터
     ) -> dict[str, Any]:
         """에이전트 호출 1건을 기록에 추가하고 해당 기록을 반환."""
         record = {
@@ -53,6 +55,8 @@ class TraceLogger:
             "cost_estimate": round(cost_estimate, 6),
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": path,
+            "operation_type": operation_type,
+            "metadata": metadata or {},
         }
         self.records.append(record)
         return record

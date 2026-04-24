@@ -16,10 +16,19 @@ from app.schemas.task import TaskRequest
 class JudgeAgent(BaseAgent):
     """최종 출력의 품질을 판정하는 에이전트."""
 
-    def __init__(self):
+    def __init__(self, model_settings: dict[str, str] | None = None):
         # judge.md 프롬프트 파일 로딩
         prompt = self.load_prompt("judge")
-        super().__init__(agent_name="judge", system_prompt=prompt)
+        settings = model_settings or {}
+        super().__init__(
+            agent_name="judge",
+            system_prompt=prompt,
+            provider=settings.get("provider"),
+            model=settings.get("model"),
+            api_key=settings.get("api_key"),
+            base_url=settings.get("base_url"),
+        )
+        self.last_output: AgentOutput | None = None
 
     async def judge(self, task: TaskRequest, output: AgentOutput) -> JudgeDecision:
         """합성 결과의 품질을 판정하여 JudgeDecision을 반환.
@@ -52,6 +61,7 @@ class JudgeAgent(BaseAgent):
             temperature=0.2,
             response_format={"type": "json_object"},
         )
+        self.last_output = result
 
         # JSON 파싱 → JudgeDecision 변환
         return self._parse_decision(result.content)

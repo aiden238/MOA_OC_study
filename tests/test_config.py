@@ -1,13 +1,17 @@
 """Configuration resolution tests."""
 
+import app.core.config as config
+
 from app.core.config import resolve_embedding_settings, resolve_llm_settings
 
 
 class TestResolveLLMSettings:
-    def test_default_runtime_is_openai(self):
+    def test_default_runtime_is_openai(self, monkeypatch):
+        monkeypatch.setattr(config, "LLM_API_PROVIDER", "openai")
+        monkeypatch.setattr(config, "DEFAULT_MODEL", "gpt-4o-mini")
         settings = resolve_llm_settings()
         assert settings["provider"] == "openai"
-        assert settings["model"]
+        assert settings["model"] == "gpt-4o-mini"
         assert settings["base_url"] == "https://api.openai.com/v1"
         assert settings["api_key"] == "test-openai-key"
 
@@ -22,11 +26,22 @@ class TestResolveLLMSettings:
         assert settings["base_url"] == "https://generativelanguage.googleapis.com/v1beta/openai"
         assert settings["api_key"] == "test-gemini-key"
 
-    def test_eval_alias_uses_xai(self, monkeypatch):
-        monkeypatch.setenv("EVAL_MODEL_PROVIDER", "grok")
-        monkeypatch.setenv("EVAL_MODEL", "grok-4")
+    def test_eval_alias_uses_zai(self, monkeypatch):
+        monkeypatch.setenv("EVAL_MODEL_PROVIDER", "zhipu")
+        monkeypatch.setenv("EVAL_MODEL", "glm-4.7-flash")
 
         settings = resolve_llm_settings(agent_name="rubric_judge")
+
+        assert settings["provider"] == "zai"
+        assert settings["model"] == "glm-4.7-flash"
+        assert settings["base_url"] == "https://open.bigmodel.cn/api/paas/v4"
+        assert settings["api_key"] == "test-zai-key"
+
+    def test_legacy_grok_alias_still_normalizes(self, monkeypatch):
+        monkeypatch.setenv("XAI_API_KEY", "test-xai-key")
+        monkeypatch.setenv("XAI_BASE_URL", "https://api.x.ai/v1")
+
+        settings = resolve_llm_settings(provider="grok", model="grok-4")
 
         assert settings["provider"] == "xai"
         assert settings["model"] == "grok-4"

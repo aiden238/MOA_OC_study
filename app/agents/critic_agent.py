@@ -11,10 +11,18 @@ from app.schemas.agent_io import AgentOutput
 class CriticAgent(BaseAgent):
     """3개 draft를 비교 분석하는 비평 에이전트."""
 
-    def __init__(self):
+    def __init__(self, model_settings: dict[str, str] | None = None):
         # critic.md 프롬프트 파일 로딩
         prompt = self.load_prompt("critic")
-        super().__init__(agent_name="critic", system_prompt=prompt)
+        settings = model_settings or {}
+        super().__init__(
+            agent_name="critic",
+            system_prompt=prompt,
+            provider=settings.get("provider"),
+            model=settings.get("model"),
+            api_key=settings.get("api_key"),
+            base_url=settings.get("base_url"),
+        )
 
     def _format_drafts(self, drafts: list[AgentOutput]) -> str:
         """3개 draft를 [Draft A], [Draft B], [Draft C] 형식으로 포맷."""

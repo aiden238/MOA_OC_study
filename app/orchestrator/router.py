@@ -118,9 +118,20 @@ _ROUTER_SYSTEM_PROMPT = """당신은 태스크 라우팅 전문가입니다.
 """
 
 
-async def llm_route(task: TaskRequest) -> RoutingDecision:
+async def llm_route(
+    task: TaskRequest,
+    model_settings: dict[str, str] | None = None,
+) -> RoutingDecision:
     """2단계: LLM 판별 — 1단계에서 결정 못 한 애매한 케이스를 LLM으로 판정."""
-    agent = BaseAgent(agent_name="router", system_prompt=_ROUTER_SYSTEM_PROMPT)
+    settings = model_settings or {}
+    agent = BaseAgent(
+        agent_name="router",
+        system_prompt=_ROUTER_SYSTEM_PROMPT,
+        provider=settings.get("provider"),
+        model=settings.get("model"),
+        api_key=settings.get("api_key"),
+        base_url=settings.get("base_url"),
+    )
 
     message = f"""[태스크 유형] {task.task_type}
 [프롬프트] {task.prompt[:300]}
@@ -171,6 +182,9 @@ async def llm_route(task: TaskRequest) -> RoutingDecision:
 class Router:
     """2단계 하이브리드 라우터 — Rule-based 우선, 실패 시 LLM 판별."""
 
+    def __init__(self, model_settings: dict[str, str] | None = None):
+        self.model_settings = model_settings or {}
+
     async def route(self, task: TaskRequest) -> RoutingDecision:
         """태스크를 분석하여 single 또는 moa 경로를 결정.
 
@@ -183,4 +197,4 @@ class Router:
             return decision
 
         # 2단계: LLM 판별 (비용 발생)
-        return await llm_route(task)
+        return await llm_route(task, model_settings=self.model_settings)

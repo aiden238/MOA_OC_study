@@ -12,10 +12,18 @@ from app.schemas.agent_io import AgentOutput, JudgeDecision
 class RewriteAgent(BaseAgent):
     """Judge 피드백을 기반으로 출력을 개선하는 에이전트."""
 
-    def __init__(self):
+    def __init__(self, model_settings: dict[str, str] | None = None):
         # rewrite.md 프롬프트 파일 로딩
         prompt = self.load_prompt("rewrite")
-        super().__init__(agent_name="rewrite", system_prompt=prompt)
+        settings = model_settings or {}
+        super().__init__(
+            agent_name="rewrite",
+            system_prompt=prompt,
+            provider=settings.get("provider"),
+            model=settings.get("model"),
+            api_key=settings.get("api_key"),
+            base_url=settings.get("base_url"),
+        )
 
     async def rewrite(self, original: AgentOutput, feedback: JudgeDecision) -> AgentOutput:
         """원본 출력 + Judge 피드백 → 개선된 텍스트 생성.

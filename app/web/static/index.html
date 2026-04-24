@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MOA Web Chat</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel controls">
+        <div class="title-row">
+          <h1>MOA Web Chat</h1>
+          <button id="new-session-btn" type="button">New Session</button>
+        </div>
+
+        <div class="control-grid">
+          <label>
+            <span>Path</span>
+            <select id="path-select">
+              <option value="auto">auto</option>
+              <option value="single">single</option>
+              <option value="moa">moa</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Preset</span>
+            <select id="preset-select">
+              <option value="">None</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Provider</span>
+            <select id="global-provider"></select>
+          </label>
+
+          <label>
+            <span>Model</span>
+            <select id="global-model"></select>
+          </label>
+        </div>
+
+        <details class="advanced-panel">
+          <summary>Advanced Agent Overrides</summary>
+          <div id="agent-overrides" class="agent-grid"></div>
+        </details>
+      </section>
+
+      <section class="panel chat-panel">
+        <div id="messages" class="messages"></div>
+        <div class="composer">
+          <textarea
+            id="prompt-input"
+            rows="5"
+            placeholder="메시지를 입력하세요."
+          ></textarea>
+          <button id="send-btn" type="button">Send</button>
+        </div>
+      </section>
+
+      <section class="panel metrics-panel">
+        <h2>Last Turn</h2>
+        <div id="session-info" class="session-info">Session: -</div>
+        <dl id="metrics"></dl>
+        <pre id="selected-models"></pre>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -39,12 +39,41 @@ def _log_output(logger: TraceLogger, output: AgentOutput, input_prompt: str, pat
     )
 
 
+def _safe_output_attr(
+    output: AgentOutput | None,
+    field_name: str,
+    default,
+    expected_type: type[str] | type[int] | type[float],
+):
+    """Return a typed AgentOutput field or a safe default.
+
+    Some mock-based tests replace JudgeAgent with AsyncMock instances and do
+    not populate `last_output` with a real AgentOutput.
+    """
+    if output is None:
+        return default
+
+    value = getattr(output, field_name, default)
+    if expected_type is str:
+        return value if isinstance(value, str) else default
+    if expected_type is int:
+        return value if isinstance(value, int) else default
+    if expected_type is float:
+        if isinstance(value, (int, float)):
+            return float(value)
+        return default
+    return default
+
+
 class MOAExecutor:
     """Draft → Critic → Synthesizer → Judge → (Rewrite) 파이프라인을 실행.
 
     `execute`는 선택적으로 `routing`을 받아 RAG/MCP 컨텍스트를 주입할 수 있습니다.
     backward-compatible하게 기존 호출 시에도 동작합니다.
     """
+
+    def __init__(self, model_overrides: dict[str, dict[str, str]] | None = None):
+        self.model_overrides = model_overrides or {}
 
     async def execute(self, task: TaskRequest, logger: TraceLogger, routing=None, run_id: str | None = None) -> tuple[str, list[AgentOutput]]:
         """MOA 파이프라인 전체 실행.
@@ -232,38 +261,50 @@ class MOAExecutor:
         enriched_task.prompt = enriched_prompt
 
         # ── 1단계: Draft 3종 비동기 병렬 실행 ──
-        drafts = await run_all_drafts(enriched_task)
+        drafts = await run_all_drafts(enriched_task, model_overrides=self.model_overrides)
         for draft in drafts:
             _log_output(logger, draft, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(draft)
 
         # ── 2단계: Critic이 draft 비교 분석 ──
-        critic = CriticAgent()
+        critic = CriticAgent(model_settings=self.model_overrides.get("critic"))
         critique = await critic.critique(drafts, original_prompt=enriched_task.prompt)
         _log_output(logger, critique, enriched_task.prompt, path="moa" + path_suffix)
         all_outputs.append(critique)
 
         # ── 3단계: Synthesizer가 최종 결과 생성 ──
-        synthesizer = SynthesizerAgent()
+        synthesizer = SynthesizerAgent(model_settings=self.model_overrides.get("synthesizer"))
         final = await synthesizer.synthesize(drafts, critique, original_prompt=enriched_task.prompt)
         _log_output(logger, final, enriched_task.prompt, path="moa" + path_suffix)
         all_outputs.append(final)
 
         # ── 4단계: Judge가 품질 판정 ──
-        judge = JudgeAgent()
+        judge = JudgeAgent(model_settings=self.model_overrides.get("judge"))
         current_output = final
         decision = None
 
         for loop in range(MAX_REWRITE_LOOPS + 1):
             decision = await judge.judge(enriched_task, current_output)
             # Judge 호출도 trace에 기록 (AgentOutput 생성)
+            judge_source_output = judge.last_output
             judge_output = AgentOutput(
                 agent_name="judge",
                 content=decision.model_dump_json(),
-                model="gpt-4o-mini",
-                prompt_tokens=0,
-                completion_tokens=0,
-                latency_ms=0.0,
+                model=_safe_output_attr(judge_source_output, "model", "unknown", str),
+                prompt_tokens=_safe_output_attr(judge_source_output, "prompt_tokens", 0, int),
+                completion_tokens=_safe_output_attr(
+                    judge_source_output,
+                    "completion_tokens",
+                    0,
+                    int,
+                ),
+                latency_ms=_safe_output_attr(judge_source_output, "latency_ms", 0.0, float),
+                cost_estimate=_safe_output_attr(
+                    judge_source_output,
+                    "cost_estimate",
+                    0.0,
+                    float,
+                ),
             )
             _log_output(logger, judge_output, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(judge_output)
@@ -275,7 +316,7 @@ class MOAExecutor:
                 break
             elif decision.decision == "rewrite" and loop < MAX_REWRITE_LOOPS:
                 # ── 5단계: Rewrite Agent가 피드백 반영 ──
-                rewriter = RewriteAgent()
+                rewriter = RewriteAgent(model_settings=self.model_overrides.get("rewrite"))
                 current_output = await rewriter.rewrite(current_output, decision)
                 _log_output(logger, current_output, enriched_task.prompt, path="moa" + path_suffix)
                 all_outputs.append(current_output)

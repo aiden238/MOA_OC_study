@@ -1,21 +1,23 @@
 # MOA Orchestration Lab
 
-단일 LLM 호출, Multi-Agent Orchestration, RAG, MCP 경로를 비교하는 실험 저장소다.
+단일 LLM 호출, Multi-Agent Orchestration, RAG, MCP를 단계적으로 비교 검증하는 실험 프로젝트입니다.
+
+핵심 질문:
+`멀티 에이전트 오케스트레이션이 단일 호출보다 실제로 나은가?`
 
 ---
 
 ## 현재 기준
 
-- 기본 프로바이더: `OpenAI`
-- 기본 모델: `.env`의 `DEFAULT_MODEL`
-- 기본 임베딩: `text-embedding-3-small`
-- 선택 확장: `Gemini`, `Grok(xAI)`
-- 실행 기준 문서: `README.md`, `AGENTS.md`, `refs/tech_stack.md`
+- 기본 LLM provider: `OpenAI`
+- 기본 모델 source of truth: `.env`의 `DEFAULT_MODEL`
+- 기본 embedding: `text-embedding-3-small`
+- 선택 확장 provider: `Gemini`, `Z.AI`
+- 레거시 alias: `xAI`, `Grok`, `Zhipu`, `GLM` 입력은 내부 정규화에서 처리
+- CLI 비교 실험은 유지하고, Week 10부터 `FastAPI + 정적 웹 UI`를 추가 지원
 
-주의:
-
-- 2026-04-20에 시도했던 OpenRouter + Gemma 기준은 철회됐다.
-- 과거 문서에 남아 있는 OpenRouter 관련 표기는 현재 기준이 아니다.
+문서 우선순위:
+`AGENTS.md -> refs/tech_stack.md -> 현재 주차 문서`
 
 ---
 
@@ -30,26 +32,38 @@ python -m pip install -r requirements.txt
 copy env.example .env
 ```
 
-### 2. `.env` 설정
-
-최소 설정:
+### 2. 최소 `.env`
 
 ```text
 LLM_API_PROVIDER=openai
-OPENAI_API_KEY=
 DEFAULT_MODEL=gpt-4o-mini
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+
 EMBEDDING_API_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_API_KEY=
+EMBEDDING_API_BASE_URL=https://api.openai.com/v1
 ```
 
-혼합 프로바이더 예시:
+### 3. 선택 provider 예시
+
+```text
+GEMINI_API_KEY=
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+
+ZAI_API_KEY=
+ZAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+```
+
+### 4. 에이전트별 override 예시
 
 ```text
 DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini
 DRAFT_ANALYTICAL_MODEL=gemini-2.5-flash
 
-DRAFT_CREATIVE_MODEL_PROVIDER=xai
-DRAFT_CREATIVE_MODEL=grok-4
+DRAFT_CREATIVE_MODEL_PROVIDER=zai
+DRAFT_CREATIVE_MODEL=glm-4.7-flash
 
 CRITIC_MODEL_PROVIDER=openai
 CRITIC_MODEL=gpt-4o-mini
@@ -57,7 +71,7 @@ CRITIC_MODEL=gpt-4o-mini
 
 ---
 
-## 실행
+## CLI 실행
 
 ### Baseline
 
@@ -77,13 +91,13 @@ python scripts/run_moa.py --benchmark v1.json
 python scripts/run_full.py --benchmark v1.json
 ```
 
-### RAG 실주행
+### RAG 검증
 
 ```bash
 python scripts/run_full.py --benchmark v1_rag_mcp.json --case-id rag-001 --evaluate --output-tag rag
 ```
 
-### MCP 실주행
+### MCP 검증
 
 ```bash
 python scripts/run_full.py --benchmark v1_rag_mcp.json --case-id mcp-001 --evaluate --output-tag mcp
@@ -104,14 +118,45 @@ python scripts/compare_runs.py --dir data/outputs --format table
 
 ---
 
-## 벤치마크
+## Web UI
 
-- `data/benchmarks/v1.json`: baseline 12건
-- `data/benchmarks/v1_rag_mcp.json`: RAG/MCP smoke validation
+Week 10부터 웹 챗봇 UI를 지원합니다.
+
+실행:
+
+```bash
+uvicorn app.web.server:app --reload
+```
+
+접속:
+
+- `/`
+- `/health`
+- `/api/models`
+- `/api/sessions`
+- `/api/chat`
+
+지원 기능:
+
+- 세션형 대화
+- `auto / single / moa` 경로 선택
+- 글로벌 모델 선택
+- agent별 override
+- preset 기반 다중 모델 조합
+- trace path / output path / routing metadata 반환
+
+현재 웹 레이어는 메모리 세션 저장소를 사용합니다. 영속 세션 저장은 후속 확장 범위입니다.
 
 ---
 
-## 주요 디렉토리
+## 벤치마크
+
+- `data/benchmarks/v1.json`: baseline 12건
+- `data/benchmarks/v1_rag_mcp.json`: RAG/MCP smoke 및 validation
+
+---
+
+## 주요 구조
 
 ```text
 app/
@@ -123,6 +168,8 @@ app/
   prompts/
   rag/
   schemas/
+  services/
+  web/
 scripts/
 data/
 docs/
@@ -131,18 +178,18 @@ refs/
 
 ---
 
-## 문서 해석 규칙
-
-- 현재 기준은 `AGENTS.md -> refs/tech_stack.md -> 현재 주차 문서` 순서로 읽는다.
-- OpenRouter 중심 문구는 historical snapshot 또는 철회된 시도로 본다.
-- `Planner`는 현재 코드에서 독립 모듈이라기보다 planning stage 개념으로 읽는다.
-
----
-
 ## 변경 기록
+
+### 2026-04-25
+
+- Week 10 C10-1 ~ C10-4 구현을 반영했다.
+- `app/services/chat_service.py` 기반 공용 chat runtime을 추가했다.
+- `FastAPI` 웹 서버와 정적 챗 UI를 추가했다.
+- 글로벌 모델 선택, agent override, preset 기반 다중 모델 선택을 추가했다.
+- `scripts/run_full.py`를 service-layer wrapper 구조로 정리했다.
+- 신규 테스트를 포함해 전체 `pytest` 통과 상태를 확인했다.
 
 ### 2026-04-20
 
-- 기본 런타임을 OpenAI로 복구했다.
-- Gemini와 Grok를 agent-level override로 동시에 사용할 수 있게 README 예시를 바꿨다.
-- OpenRouter + Gemma 기준 예시를 제거했다.
+- OpenRouter + Gemma 기준을 철회하고 OpenAI 기본 런타임으로 복구했다.
+- Gemini와 Z.AI를 선택 확장 provider로 재정리했다.

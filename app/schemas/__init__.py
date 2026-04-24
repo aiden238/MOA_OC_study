@@ -4,6 +4,14 @@
 """
 
 from app.schemas.agent_io import AgentInput, AgentOutput, JudgeDecision
+from app.schemas.chat import (
+    ChatMetrics,
+    ChatSessionMessage,
+    ChatTurnRequest,
+    ChatTurnResponse,
+    ModelSelection,
+    SelectedModelInfo,
+)
 from app.schemas.task import TaskPlan, TaskRequest
 from app.schemas.trace import CaseResult, RunSummary, TraceRecord
 
@@ -16,4 +24,10 @@ __all__ = [
     "TraceRecord",
     "CaseResult",
     "RunSummary",
+    "ModelSelection",
+    "SelectedModelInfo",
+    "ChatMetrics",
+    "ChatSessionMessage",
+    "ChatTurnRequest",
+    "ChatTurnResponse",
 ]

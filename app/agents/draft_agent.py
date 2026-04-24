@@ -29,14 +29,22 @@ _semaphore = asyncio.Semaphore(3)
 class DraftAgent(BaseAgent):
     """특정 관점의 초안을 생성하는 에이전트. BaseAgent를 상속."""
 
-    def __init__(self, variant: str):
+    def __init__(self, variant: str, model_settings: dict[str, str] | None = None):
         """variant: 'analytical' | 'creative' | 'structured'"""
         if variant not in DRAFT_VARIANTS:
             raise ValueError(f"알 수 없는 Draft 변형: {variant}. 허용: {list(DRAFT_VARIANTS.keys())}")
         config = DRAFT_VARIANTS[variant]
         # 역할별 프롬프트 파일 로딩
         prompt = self.load_prompt(config["prompt"])
-        super().__init__(agent_name=f"draft_{variant}", system_prompt=prompt)
+        settings = model_settings or {}
+        super().__init__(
+            agent_name=f"draft_{variant}",
+            system_prompt=prompt,
+            provider=settings.get("provider"),
+            model=settings.get("model"),
+            api_key=settings.get("api_key"),
+            base_url=settings.get("base_url"),
+        )
         self.variant = variant
         self.temperature = config["temperature"]  # 변형별 고유 temperature
 
@@ -58,12 +66,19 @@ async def _call_with_retry(agent: DraftAgent, user_message: str) -> AgentOutput:
         return await agent.run(user_message)
 
 
-async def run_all_drafts(task: TaskRequest) -> list[AgentOutput]:
+async def run_all_drafts(
+    task: TaskRequest,
+    model_overrides: dict[str, dict[str, str]] | None = None,
+) -> list[AgentOutput]:
     """3개 Draft Agent를 asyncio.gather()로 비동기 병렬 실행.
 
     하나의 draft가 실패해도 나머지 결과는 반환 (graceful degradation).
     """
-    agents = [DraftAgent(v) for v in DRAFT_VARIANTS]
+    model_overrides = model_overrides or {}
+    agents = [
+        DraftAgent(v, model_settings=model_overrides.get(f"draft_{v}"))
+        for v in DRAFT_VARIANTS
+    ]
     # 각 에이전트를 병렬로 호출하되, 개별 실패는 예외로 수집
     tasks = [_call_with_retry(agent, task.prompt) for agent in agents]
     results = await asyncio.gather(*tasks, return_exceptions=True)

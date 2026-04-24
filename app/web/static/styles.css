@@ -1,0 +1,115 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+  background: linear-gradient(135deg, #f3efe3, #d9e6f2);
+  color: #14212b;
+}
+
+.app-shell {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(20, 33, 43, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 16px 40px rgba(20, 33, 43, 0.08);
+}
+
+.title-row,
+.composer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-grid,
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+label,
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+}
+
+textarea,
+select,
+button {
+  font: inherit;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 33, 43, 0.2);
+  padding: 10px 12px;
+}
+
+button {
+  background: #1e5f74;
+  color: #fff;
+  cursor: pointer;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 320px;
+  max-height: 520px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.message {
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.message.user {
+  background: #dff3ea;
+}
+
+.message.assistant {
+  background: #f7ead5;
+}
+
+.message p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+
+.metrics-panel dl {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 12px;
+}
+
+.metrics-panel pre {
+  white-space: pre-wrap;
+  background: #f4f7fa;
+  padding: 12px;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+@media (max-width: 760px) {
+  .title-row,
+  .composer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

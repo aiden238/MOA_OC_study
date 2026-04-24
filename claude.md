@@ -1,97 +1,71 @@
 # Claude Reference Guide
 
-이 파일은 `AGENTS.md`의 요약 미러다.
+이 문서는 `AGENTS.md`의 실행 기준을 빠르게 다시 확인하기 위한 요약본이다.
 
 - 충돌 시 `AGENTS.md`를 우선한다.
-- Claude는 현재 기준을 `AGENTS.md`, `refs/tech_stack.md`, 현재 주차 문서 순서로 해석한다.
+- 해석 순서는 `AGENTS.md -> refs/tech_stack.md -> 현재 주차 문서`다.
 
 ---
 
-## 현재 해석 규칙
+## 현재 런타임
 
-### 1. 런타임 기준
+- 기본 provider: `OpenAI`
+- 기본 모델: `.env`의 `DEFAULT_MODEL`
+- 기본 embedding: `text-embedding-3-small`
+- 선택 확장: `Gemini`, `Z.AI`
+- 레거시 alias: `xai`, `grok`, `zhipu`, `glm`
+- agent-level env override와 request-level override를 모두 지원
 
-- 기본 프로바이더는 `OpenAI`다.
-- 기본 모델은 `.env`의 `DEFAULT_MODEL`이다.
-- 기본 임베딩은 `text-embedding-3-small`이다.
-- `Gemini`, `Z.AI(Zhipu/GLM)`는 선택 확장이다 (Grok/xAI는 Z.AI로 교체됨).
-- 에이전트별 env override로 혼합 사용이 가능하다.
-- `glm-4.7-flash`는 reasoning model: `base_agent.py`에 reasoning_content fallback 및 max_completion_tokens 4096 headroom 구현됨.
+---
 
-### 2. OpenRouter 해석
+## Week 10 추가 사항
 
-- OpenRouter + Gemma 전환 시도는 철회됐다.
-- 과거 문서의 OpenRouter 관련 표기는 stale wording으로 처리한다.
+추가 완료:
 
-### 3. 실행 기준
+- 공용 service-layer runtime
+- `FastAPI` 웹 서버
+- 정적 웹 챗 UI
+- 메모리 세션 저장소
+- 글로벌 모델 선택
+- agent override
+- preset 기반 다중 모델 선택
+- `/api/models`, `/api/sessions`, `/api/chat` API
+
+웹 서버 실행:
+
+```bash
+uvicorn app.web.server:app --reload
+```
+
+---
+
+## CLI 기준
 
 - `run_single.py`, `run_moa.py`, `run_full.py`는 `--benchmark`를 사용한다.
-- `run_full.py --output-tag`로 결과 파일 덮어쓰기를 피한다.
-
-### 4. 벤치마크 기준
-
-- `v1.json`: baseline
-- `v1_rag_mcp.json`: RAG/MCP smoke validation
-
-### 5. Planner 해석
-
-- `Planner`는 현재 코드에서 독립 런타임 모듈이 아니라 planning stage 개념이다.
+- `run_full.py`는 `--output-tag`를 지원한다.
 
 ---
 
-## 현재 진행 스냅샷
+## 벤치마크 기준
 
-기준 시각: 2026-04-20
-
-- OpenAI 기본 런타임 복구는 완료됐다.
-- Gemini/Grok 혼합 사용을 위한 agent-level override도 반영됐다.
-- Week 8 실주행 4건은 완료됐다.
-- GPT-5 계열 chat completions 호환성 수정도 반영됐다.
-- `data/outputs/`에는 RAG 1건, MCP 1건, plain MOA 2건이 저장돼 있다.
-- Claude는 이 상태를 current progress로 인식해야 한다.
-
-실주행 재개 조건:
-
-- 현재 기준으로는 실주행 재개 조건이 아니라 결과 검토 및 후속 실험 확장 단계다.
-
-현재 확보 결과:
-
-- `rag-001` path=`moa+rag`, avg_score=`4.0`
-- `mcp-001` path=`moa+mcp`, avg_score=`4.0`
-- rag delta: `+2.25`
-- mcp delta: `+0.25`
-
-추가 상태 해석:
-
-- 위 결과는 "실주행 완료" 상태다. 단순 구현 완료가 아니다.
-- mixed-provider는 아직 실행되지 않았고, 현재 `.env` 기준으로는 Gemini/Grok 키도 없다.
-- GPT-5 cost estimation은 반영 완료 상태다.
-- 구조화 평가 안정성을 위해 현재 baseline snapshot은 `EVAL_MODEL=gpt-4o-mini` override로 재생성됐다.
-- `data/outputs`, `data/traces` evidence는 로컬 기준이며 기본 git 추적 대상은 아니다.
+- `data/benchmarks/v1.json`: baseline
+- `data/benchmarks/v1_rag_mcp.json`: RAG/MCP smoke validation
 
 ---
 
-## Claude용 선택지
+## 현재 상태 요약
 
-Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
+기준일: 2026-04-25
 
-1. OpenAI 기준 Week 8 snapshot 유지
-2. Gemini/Grok를 `draft_*`에 분배해 mixed-provider 확장 실험
-3. 운영 보강
-   - evidence commit 정책 정리
-   - 추가 benchmark 확장
-   - mixed-provider 실행 전 provider key 준비
-
-금지 해석:
-
-- "RAG/MCP는 아직 구현 전"으로 읽지 말 것
-- "OpenRouter가 현재 기본값"으로 읽지 말 것
+- OpenAI 기본 런타임 복구 상태 유지
+- Gemini/Z.AI mixed-provider 구성 지원
+- RAG, MCP, path-aware evaluation 유지
+- Week 10 웹 챗봇 레이어 구현 완료
+- 전체 테스트 통과: `155 passed`
 
 ---
 
-## 에이전트별 override 힌트
-
-자주 쓰는 prefix:
+## 자주 쓰는 override prefix
 
 - `SINGLE_*`
 - `ROUTER_*`
@@ -104,25 +78,24 @@ Claude는 현재 다음 분기 중 하나를 후속 작업으로 인식한다.
 - `REWRITE_*`
 - `EVAL_*`
 
-예:
+예시:
 
-- `DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini`
-- `DRAFT_CREATIVE_MODEL_PROVIDER=zai`
-- `EVAL_MODEL_PROVIDER=openai`
+```text
+DRAFT_ANALYTICAL_MODEL_PROVIDER=gemini
+DRAFT_CREATIVE_MODEL_PROVIDER=zai
+EVAL_MODEL_PROVIDER=openai
+```
 
 ---
 
 ## 변경 기록
 
+### 2026-04-25
+
+- Week 10 웹 UI, 세션 챗, 모델 선택 런타임을 반영했다.
+- `scripts/run_full.py`의 service-layer wrapper 구조를 반영했다.
+- 테스트 통과 상태를 현재 기준으로 갱신했다.
+
 ### 2026-04-20
 
-- OpenAI 기본 복구와 Gemini/Grok 혼합 사용 규칙을 반영했다.
-- OpenRouter 문구를 현재 기준에서 제외했다.
-- Week 8 실주행 완료 상태와 비교 결과를 반영했다.
-- 현재 선택지와 미완료 항목 해석 규칙을 추가했다.
-- pricing 반영 완료와 evaluation override 기반 baseline 갱신을 추가했다.
-- ✅ 9주차 완료: baseline sweep 12건(single/moa) 실행, RAG/MCP 각 3건 확장 실행, 3-group 비교표 `data/outputs/comparison_w9_final.csv` 생성.
-- Grok(xAI) → Z.AI(Zhipu) 교체. `ZAI_API_KEY` + `glm-4.7-flash` 실주행 검증 완료.
-- `base_agent.py`: ZAI reasoning model 지원 추가 (reasoning_content fallback, max_completion_tokens 4096, temperature 비활성).
-- 주간 커밋 제한 해제 (AGENTS.md 가드레일 #6 "제한 없음").
-- Gemini API key free tier quota 소진 → 현재 비활성. billing 설정 후 재활성 가능.
+- OpenAI 기본 런타임 복구와 mixed-provider 정책을 반영했다.

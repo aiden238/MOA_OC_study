@@ -117,11 +117,17 @@ async def evaluate_single(
     constraints: dict | None = None,
     path: str = "single",
     evaluation_context: dict | None = None,
+    model_settings: dict[str, str] | None = None,
 ) -> dict:
     """단일 케이스를 LLM Judge로 채점."""
+    settings = model_settings or {}
     judge = BaseAgent(
         agent_name="rubric_judge",
         system_prompt=RUBRIC_SYSTEM_PROMPT,
+        provider=settings.get("provider"),
+        model=settings.get("model"),
+        api_key=settings.get("api_key"),
+        base_url=settings.get("base_url"),
     )
 
     message = build_judge_message(prompt, output, constraints, path, evaluation_context)

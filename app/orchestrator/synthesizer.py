@@ -11,10 +11,18 @@ from app.schemas.agent_io import AgentOutput
 class SynthesizerAgent(BaseAgent):
     """Critic 피드백과 drafts를 조합하여 최종 결과를 생성하는 에이전트."""
 
-    def __init__(self):
+    def __init__(self, model_settings: dict[str, str] | None = None):
         # synthesizer.md 프롬프트 파일 로딩
         prompt = self.load_prompt("synthesizer")
-        super().__init__(agent_name="synthesizer", system_prompt=prompt)
+        settings = model_settings or {}
+        super().__init__(
+            agent_name="synthesizer",
+            system_prompt=prompt,
+            provider=settings.get("provider"),
+            model=settings.get("model"),
+            api_key=settings.get("api_key"),
+            base_url=settings.get("base_url"),
+        )
 
     def _format_inputs(self, drafts: list[AgentOutput], critique: AgentOutput) -> str:
         """drafts와 critic 피드백을 하나의 메시지로 포맷."""

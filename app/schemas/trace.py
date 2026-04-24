@@ -47,6 +47,12 @@ class CaseResult(BaseModel):
     evaluation: dict[str, Any] = Field(default_factory=dict)
     evaluation_context: dict[str, Any] = Field(default_factory=dict)
     context_metadata: dict[str, Any] = Field(default_factory=dict)
+    trace_path: str = ""
+    session_id: str = ""
+    selected_models: dict[str, Any] = Field(default_factory=dict)
+    resolved_provider_map: dict[str, str] = Field(default_factory=dict)
+    fallback_reasons: dict[str, str | None] = Field(default_factory=dict)
+    preset_id: str = ""
 
 
 class RunSummary(BaseModel):

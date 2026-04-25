@@ -31,7 +31,11 @@ class TestResolveRequestModels:
         assert resolved["selected_models"]["single_baseline"].source == "global_model"
         assert resolved["selected_models"]["draft_creative"].source == "agent_override"
 
-    def test_preset_is_applied_to_multiple_agents(self):
+    def test_preset_is_applied_to_multiple_agents(self, monkeypatch):
+        # Simulate Gemini being available (key present, not explicitly disabled)
+        monkeypatch.delenv("GEMINI_AVAILABLE", raising=False)
+        monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+
         resolved = resolve_request_models(preset_id="openai_gemini_drafts")
 
         assert resolved["preset_id"] == "openai_gemini_drafts"

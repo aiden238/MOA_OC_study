@@ -155,6 +155,11 @@ def canonicalize_agent_name(agent_name: str) -> str:
 
 
 def _provider_key_configured(provider: str) -> bool:
+    # Allow explicit override: {PROVIDER_UPPER}_AVAILABLE=false disables even if key is set
+    # Useful for e.g. GEMINI_AVAILABLE=false when key exists but quota is exhausted
+    available_flag = os.getenv(f"{provider.upper()}_AVAILABLE", "").strip().lower()
+    if available_flag == "false":
+        return False
     for env_name in PROVIDER_KEY_ENV.get(provider, ()):
         if os.getenv(env_name):
             return True
@@ -162,6 +167,10 @@ def _provider_key_configured(provider: str) -> bool:
 
 
 def _provider_unavailable_reason(provider: str) -> str | None:
+    available_flag = os.getenv(f"{provider.upper()}_AVAILABLE", "").strip().lower()
+    if available_flag == "false":
+        label = PROVIDER_LABELS.get(provider, provider)
+        return f"{label} is explicitly disabled (set {provider.upper()}_AVAILABLE=false)"
     if _provider_key_configured(provider):
         return None
     label = PROVIDER_LABELS.get(provider, provider)
@@ -172,7 +181,11 @@ def _model_entry(provider: str, model: str) -> dict[str, Any] | None:
     provider_norm = (provider or "").strip().lower()
     model_norm = (model or "").strip()
     for entry in MODEL_CATALOG:
-        if entry["provider"] == provider_norm and entry["model"] == model_norm:
+        if entry["provider"] != provider_norm:
+            continue
+        catalog_model = entry["model"]
+        # Exact match or versioned suffix match (e.g. "gpt-5-nano-2025-08-07" → "gpt-5-nano")
+        if model_norm == catalog_model or model_norm.startswith(catalog_model + "-"):
             return entry
     return None
 

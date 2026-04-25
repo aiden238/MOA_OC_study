@@ -58,9 +58,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--force-path",
         type=str,
-        choices=["single", "moa"],
+        choices=["auto", "single", "moa"],
         default=None,
-        help="Force single or moa path and skip router selection",
+        help="Force execution path: 'auto' uses router, 'single'/'moa' bypass router",
     )
     parser.add_argument("--cost-report", action="store_true", help="Print cost summary")
     parser.add_argument("--evaluate", action="store_true", help="Run rubric evaluation")

@@ -29,6 +29,7 @@ def _normalize_provider(provider: str | None) -> str:
         "zhipu": "zai",
         "glm": "zai",
         "bigmodel": "zai",
+        "cerebras": "cerebras",
     }
     return aliases.get(normalized, normalized or "openai")
 
@@ -41,6 +42,8 @@ def _default_api_base(provider: str) -> str:
         return "https://api.x.ai/v1"
     if normalized == "zai":
         return "https://open.bigmodel.cn/api/paas/v4"
+    if normalized == "cerebras":
+        return "https://api.cerebras.ai/v1"
     return "https://api.openai.com/v1"
 
 
@@ -52,6 +55,8 @@ def _provider_api_key(provider: str) -> str:
         return _get_env("XAI_API_KEY", _get_env("GROK_API_KEY"))
     if normalized == "zai":
         return _get_env("ZAI_API_KEY", _get_env("ZHIPU_API_KEY"))
+    if normalized == "cerebras":
+        return _get_env("CEREBRAS_API_KEY")
     return _get_env("OPENAI_API_KEY")
 
 
@@ -63,6 +68,8 @@ def _provider_api_base(provider: str) -> str:
         return _get_env("XAI_BASE_URL", _get_env("GROK_BASE_URL", _default_api_base(normalized)))
     if normalized == "zai":
         return _get_env("ZAI_BASE_URL", _get_env("ZHIPU_BASE_URL", _default_api_base(normalized)))
+    if normalized == "cerebras":
+        return _get_env("CEREBRAS_BASE_URL", _default_api_base(normalized))
     return _get_env("OPENAI_BASE_URL", _default_api_base(normalized))
 
 
@@ -103,12 +110,14 @@ OPENAI_API_KEY: str = _get_env("OPENAI_API_KEY")
 GEMINI_API_KEY: str = _get_env("GEMINI_API_KEY", _get_env("GOOGLE_API_KEY"))
 XAI_API_KEY: str = _get_env("XAI_API_KEY", _get_env("GROK_API_KEY"))
 ZAI_API_KEY: str = _get_env("ZAI_API_KEY", _get_env("ZHIPU_API_KEY"))
+CEREBRAS_API_KEY: str = _get_env("CEREBRAS_API_KEY")
 ANTHROPIC_API_KEY: str = _get_env("ANTHROPIC_API_KEY")
 
 OPENAI_BASE_URL: str = _get_env("OPENAI_BASE_URL", _default_api_base("openai"))
 GEMINI_BASE_URL: str = _get_env("GEMINI_BASE_URL", _default_api_base("gemini"))
 XAI_BASE_URL: str = _get_env("XAI_BASE_URL", _get_env("GROK_BASE_URL", _default_api_base("xai")))
 ZAI_BASE_URL: str = _get_env("ZAI_BASE_URL", _get_env("ZHIPU_BASE_URL", _default_api_base("zai")))
+CEREBRAS_BASE_URL: str = _get_env("CEREBRAS_BASE_URL", _default_api_base("cerebras"))
 
 LLM_API_PROVIDER: str = _normalize_provider(_get_env("LLM_API_PROVIDER", "openai"))
 DEFAULT_MODEL: str = _get_env("DEFAULT_MODEL", "gpt-4o-mini")

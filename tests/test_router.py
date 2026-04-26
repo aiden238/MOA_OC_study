@@ -98,6 +98,19 @@ class TestRuleBasedRoute:
         decision = rule_based_route(task)
         assert decision is None
 
+    def test_use_mcp_constraint_returns_mcp_decision(self):
+        """use_mcp constraint가 있으면 MCP 경로를 우선 선택한다."""
+        task = TaskRequest(
+            prompt="문서 목록을 보여줘",
+            task_type="explain",
+            constraints={"use_mcp": True},
+        )
+        decision = rule_based_route(task)
+        assert decision is not None
+        assert decision.selected_path == "moa"
+        assert decision.requires_mcp is True
+        assert decision.mcp_intent == "user_forced"
+
 
 # ── LLM 라우팅 테스트 ──
 

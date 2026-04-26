@@ -86,6 +86,64 @@ def _serialize_selected_models(
     return serialized
 
 
+def _chunk_source_name(chunk: dict[str, Any]) -> str:
+    source = str(chunk.get("source") or "").strip()
+    if source:
+        return source
+
+    source_path = str(chunk.get("source_path") or "").strip()
+    if source_path:
+        return Path(source_path).name
+
+    label = str(chunk.get("label") or "").strip()
+    if label:
+        return label
+
+    return "unknown"
+
+
+def _chunk_score(chunk: dict[str, Any]) -> float | None:
+    for key in ("score", "normalized_relevance"):
+        value = chunk.get(key)
+        if isinstance(value, (int, float)):
+            return round(float(value), 3)
+    return None
+
+
+def _extract_rag_sources(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    best_by_source: dict[str, float | None] = {}
+    for chunk in chunks:
+        source = _chunk_source_name(chunk)
+        score = _chunk_score(chunk)
+        current = best_by_source.get(source)
+        if current is None or (score is not None and score > current):
+            best_by_source[source] = score
+
+    ordered = sorted(
+        best_by_source.items(),
+        key=lambda item: (-1.0 if item[1] is None else -item[1], item[0]),
+    )
+    return [{"source": source, "score": score} for source, score in ordered]
+
+
+def _build_forced_decision(task: TaskRequest, force_path: str) -> RoutingDecision:
+    constraints = task.constraints if isinstance(task.constraints, dict) else {}
+    requires_rag = constraints.get("source") == "rag_docs"
+    requires_mcp = bool(constraints.get("use_mcp"))
+
+    return RoutingDecision(
+        selected_path=force_path,  # type: ignore[arg-type]
+        reason=f"Forced by request.force_path={force_path}",
+        confidence=1.0,
+        requires_rag=requires_rag,
+        requires_mcp=requires_mcp,
+        rag_query_hint=task.prompt if requires_rag else None,
+        mcp_intent="user_forced" if requires_mcp else None,
+        preferred_server="filesystem" if requires_mcp else None,
+        preferred_tool="list_files" if requires_mcp else None,
+    )
+
+
 def save_case_output(
     result: dict[str, Any],
     output_dir: Path | None = None,
@@ -187,6 +245,7 @@ def _build_context_metadata(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     rag_records = [record for record in case_records if record.get("operation_type") == "rag"]
     mcp_records = [record for record in case_records if record.get("operation_type") == "mcp_tool"]
+    failure_records = [record for record in case_records if record.get("operation_type") == "agent_failure"]
 
     retrieval_record = next(
         (
@@ -226,13 +285,30 @@ def _build_context_metadata(
     }
 
     if retrieval_record is not None:
-        context_metadata["rag_retrieval"] = retrieval_record.get("metadata", {})
+        rag_retrieval_meta = dict(retrieval_record.get("metadata", {}))
+        if "retriever" in rag_retrieval_meta and "retriever_type" not in rag_retrieval_meta:
+            rag_retrieval_meta["retriever_type"] = rag_retrieval_meta["retriever"]
+        context_metadata["rag_retrieval"] = rag_retrieval_meta
     if context_build_record is not None:
-        context_metadata["rag"] = context_build_record.get("metadata", {})
+        rag_meta = dict(context_build_record.get("metadata", {}))
+        rag_meta.setdefault("token_estimate", rag_meta.get("context_token_estimate", 0))
+        rag_meta.setdefault("selected_count", len(rag_meta.get("selected_chunks", [])))
+        rag_meta.setdefault("total_chunks", rag_meta.get("selected_count", 0))
+        context_metadata["rag"] = rag_meta
+        context_metadata["rag_sources"] = _extract_rag_sources(rag_meta.get("selected_chunks", []))
         evaluation_context["retrieval_context"] = context_build_record.get("output_text", "")
         evaluation_context["selected_chunks"] = (
-            context_build_record.get("metadata", {}).get("selected_chunks", [])
+            rag_meta.get("selected_chunks", [])
         )
+    if failure_records:
+        context_metadata["failed_agents"] = [
+            {
+                "agent_name": record["agent_name"],
+                "reason": record.get("metadata", {}).get("reason", "unknown"),
+            }
+            for record in failure_records
+        ]
+
     if mcp_record is not None:
         context_metadata["mcp"] = mcp_record.get("metadata", {})
         evaluation_context["tool_trace"] = {
@@ -270,11 +346,7 @@ async def run_chat_turn(
     cost_tracker = CostTracker()
 
     if request.force_path and request.force_path != "auto":
-        decision = RoutingDecision(
-            selected_path=request.force_path,
-            reason=f"Forced by request.force_path={request.force_path}",
-            confidence=1.0,
-        )
+        decision = _build_forced_decision(task, request.force_path)
     else:
         decision = await router.route(task)
 

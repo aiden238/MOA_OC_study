@@ -5,9 +5,9 @@ from typing import Any
 
 MODEL_PRICING: tuple[tuple[str, float, float], ...] = (
     # OpenAI
-    ("gpt-5-nano", 0.05 / 1_000_000, 0.40 / 1_000_000),
-    ("gpt-5-mini", 0.25 / 1_000_000, 2.00 / 1_000_000),
-    ("gpt-5", 1.25 / 1_000_000, 10.00 / 1_000_000),
+    ("gpt-5-nano",   0.05 / 1_000_000,  0.40 / 1_000_000),
+    ("gpt-5-mini",   0.25 / 1_000_000,  2.00 / 1_000_000),
+    ("gpt-5",        1.25 / 1_000_000, 10.00 / 1_000_000),
     ("gpt-4o-mini", 0.15 / 1_000_000, 0.60 / 1_000_000),
     ("gpt-4o", 2.50 / 1_000_000, 10.00 / 1_000_000),
     # Google Gemini  (approx. — Flash-tier pricing)
@@ -17,6 +17,8 @@ MODEL_PRICING: tuple[tuple[str, float, float], ...] = (
     # Zhipu AI GLM  (approx. — Flash-tier pricing)
     ("glm-4", 0.07 / 1_000_000, 0.07 / 1_000_000),       # GLM-4.7-Flash and variants
     ("glm-", 0.07 / 1_000_000, 0.07 / 1_000_000),        # other GLM models fallback
+    # Cerebras  (free tier — no token-level charge)
+    ("qwen-3-235b", 0.0, 0.0),                            # Qwen3-235B on Cerebras free tier
 )
 
 

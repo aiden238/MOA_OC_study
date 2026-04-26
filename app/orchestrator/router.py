@@ -90,6 +90,18 @@ def rule_based_route(task: TaskRequest) -> RoutingDecision | None:
             rag_query_hint=task.prompt,
         )
 
+    # MCP 필요성: UI 강제 힌트 또는 명시적 constraint
+    if isinstance(task.constraints, dict) and task.constraints.get("use_mcp"):
+        return RoutingDecision(
+            selected_path="moa",
+            reason="constraints에 use_mcp=true 포함 → MCP 필요",
+            confidence=0.98,
+            requires_mcp=True,
+            mcp_intent="user_forced",
+            preferred_server="filesystem",
+            preferred_tool="list_files",
+        )
+
     # MCP 필요성: 외부 도구 필요 키워드(파일 목록, 웹 검색, 현재 날씨 등)
     mcp_keywords = ["현재 날씨", "파일 목록", "웹 검색", "파일", "시스템 정보", "os 목록"]
     if any(k in task.prompt for k in mcp_keywords):

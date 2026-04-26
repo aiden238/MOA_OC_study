@@ -55,12 +55,15 @@ uvicorn app.web.server:app --reload
 
 ## 현재 상태 요약
 
-기준일: 2026-04-25
+기준일: 2026-04-26
 
 - OpenAI 기본 런타임 복구 상태 유지
 - Gemini/Z.AI mixed-provider 구성 지원
 - RAG, MCP, path-aware evaluation 유지
-- Week 10 웹 챗봇 레이어 구현 완료
+- Week 10 웹 챗봇 레이어 구현 완료 (한국어 UI 리디자인 포함)
+- Synthesizer → gpt-5.4-mini 적용 (.env + model_registry)
+- 글로벌 모델 "에이전트별 기본값" 옵션 추가 (env 기본값 우선)
+- Week 11 지침 작성 완료 (RAG·MCP 프론트엔드 연동)
 - 전체 테스트 통과: `155 passed`
 
 ---

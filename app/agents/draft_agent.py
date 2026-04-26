@@ -69,10 +69,14 @@ async def _call_with_retry(agent: DraftAgent, user_message: str) -> AgentOutput:
 async def run_all_drafts(
     task: TaskRequest,
     model_overrides: dict[str, dict[str, str]] | None = None,
-) -> list[AgentOutput]:
+) -> tuple[list[AgentOutput], list[dict]]:
     """3개 Draft Agent를 asyncio.gather()로 비동기 병렬 실행.
 
     하나의 draft가 실패해도 나머지 결과는 반환 (graceful degradation).
+
+    Returns:
+        (성공한 AgentOutput 목록, 실패 정보 목록)
+        실패 정보: {"agent_name": str, "reason": str}
     """
     model_overrides = model_overrides or {}
     agents = [
@@ -83,16 +87,20 @@ async def run_all_drafts(
     tasks = [_call_with_retry(agent, task.prompt) for agent in agents]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # 성공한 결과만 필터링 (실패 시 에러 로그 출력)
+    # 성공/실패 분리
     outputs: list[AgentOutput] = []
+    failures: list[dict] = []
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             variant = list(DRAFT_VARIANTS.keys())[i]
-            print(f"  [WARNING] draft_{variant} 실패: {result}")
+            agent_name = f"draft_{variant}"
+            reason = str(result)
+            print(f"  [WARNING] {agent_name} 실패: {reason}")
+            failures.append({"agent_name": agent_name, "reason": reason})
         else:
             outputs.append(result)
 
     if not outputs:
         raise RuntimeError("모든 Draft Agent가 실패했습니다.")
 
-    return outputs
+    return outputs, failures

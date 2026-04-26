@@ -3,70 +3,153 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MOA Web Chat</title>
+    <title>MOA Lab - 멀티 에이전트 오케스트레이션</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="panel controls">
-        <div class="title-row">
-          <h1>MOA Web Chat</h1>
-          <button id="new-session-btn" type="button">New Session</button>
-        </div>
+    <header class="top-bar">
+      <div class="top-bar__brand">
+        <span class="brand-icon">⬡</span>
+        <span class="brand-name">MOA <span class="brand-accent">Lab</span></span>
+        <span class="brand-tag">멀티 에이전트 오케스트레이션</span>
+      </div>
+      <div class="top-bar__session">
+        <span id="session-badge" class="session-badge">세션 없음</span>
+        <button id="new-session-btn" class="btn btn--ghost">+ 새 대화</button>
+      </div>
+    </header>
 
-        <div class="control-grid">
-          <label>
-            <span>Path</span>
-            <select id="path-select">
-              <option value="auto">auto</option>
-              <option value="single">single</option>
-              <option value="moa">moa</option>
-            </select>
-          </label>
+    <div class="workspace">
+      <aside class="sidebar">
+        <section class="sidebar__section">
+          <p class="sidebar__label">실행 경로</p>
+          <div class="segmented" id="path-segmented">
+            <button class="seg-btn active" data-value="auto">자동</button>
+            <button class="seg-btn" data-value="single">단일</button>
+            <button class="seg-btn" data-value="moa">MOA</button>
+            <button class="seg-btn" data-value="rag">RAG</button>
+            <button class="seg-btn" data-value="mcp">MCP</button>
+          </div>
+          <input type="hidden" id="path-select" value="auto" />
+        </section>
 
-          <label>
-            <span>Preset</span>
-            <select id="preset-select">
-              <option value="">None</option>
-            </select>
-          </label>
+        <section class="sidebar__section">
+          <p class="sidebar__label">프리셋</p>
+          <select id="preset-select" class="ctrl-select">
+            <option value="">— 없음 —</option>
+          </select>
+        </section>
 
-          <label>
-            <span>Provider</span>
-            <select id="global-provider"></select>
-          </label>
+        <section class="sidebar__section">
+          <p class="sidebar__label">글로벌 모델</p>
+          <select id="global-provider" class="ctrl-select">
+            <option value="">— 에이전트별 기본값 —</option>
+          </select>
+          <select id="global-model" class="ctrl-select" style="margin-top:8px" disabled>
+            <option value="">— 기본값 사용 —</option>
+          </select>
+        </section>
 
-          <label>
-            <span>Model</span>
-            <select id="global-model"></select>
-          </label>
-        </div>
-
-        <details class="advanced-panel">
-          <summary>Advanced Agent Overrides</summary>
+        <details class="sidebar__section sidebar__advanced">
+          <summary class="sidebar__label sidebar__adv-toggle">
+            <span>에이전트 개별 설정</span>
+            <span class="adv-arrow">›</span>
+          </summary>
           <div id="agent-overrides" class="agent-grid"></div>
         </details>
-      </section>
 
-      <section class="panel chat-panel">
-        <div id="messages" class="messages"></div>
-        <div class="composer">
-          <textarea
-            id="prompt-input"
-            rows="5"
-            placeholder="메시지를 입력하세요."
-          ></textarea>
-          <button id="send-btn" type="button">Send</button>
+        <div class="sidebar__footer">
+          <span class="provider-dot openai-dot"></span>OpenAI
+          <span class="provider-dot zai-dot"></span>Z.AI
+          <span class="provider-dot gemini-dot unavail"></span>Gemini
         </div>
-      </section>
+      </aside>
 
-      <section class="panel metrics-panel">
-        <h2>Last Turn</h2>
-        <div id="session-info" class="session-info">Session: -</div>
-        <dl id="metrics"></dl>
-        <pre id="selected-models"></pre>
-      </section>
-    </main>
+      <main class="chat-area">
+        <div id="messages" class="messages">
+          <div class="welcome-card">
+            <div class="welcome-icon">⬡</div>
+            <h2>MOA Lab에 오신 것을 환영합니다</h2>
+            <p>단일 LLM 호출부터 멀티 에이전트 오케스트레이션, RAG, MCP까지<br />다양한 실행 경로로 AI 응답을 비교 실험합니다.</p>
+            <div class="welcome-chips">
+              <span class="chip">Draft × 3</span>
+              <span class="chip">Critic</span>
+              <span class="chip">Judge</span>
+              <span class="chip">Synthesizer</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer-wrap">
+          <div class="composer">
+            <textarea
+              id="prompt-input"
+              rows="3"
+              placeholder="메시지를 입력하세요... (Ctrl+Enter 전송)"
+            ></textarea>
+            <button id="send-btn" class="btn btn--primary send-btn">
+              <span id="send-label">전송</span>
+              <span id="send-spinner" class="spinner hidden"></span>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="metrics-panel">
+        <p class="sidebar__label">최근 응답 지표</p>
+
+        <div class="metric-grid" id="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">경로</span>
+            <span class="metric-value" id="m-path">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">응답 속도</span>
+            <span class="metric-value" id="m-latency">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">입력 토큰</span>
+            <span class="metric-value" id="m-prompt-tok">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">출력 토큰</span>
+            <span class="metric-value" id="m-comp-tok">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">비용 (USD)</span>
+            <span class="metric-value" id="m-cost">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">에이전트 수</span>
+            <span class="metric-value" id="m-agents">—</span>
+          </div>
+        </div>
+
+        <p class="sidebar__label" style="margin-top:18px">에이전트 파이프라인</p>
+        <div id="pipeline-viz" class="pipeline-viz">
+          <span class="pipeline-empty">응답 후 표시됩니다</span>
+        </div>
+
+        <p class="sidebar__label" style="margin-top:18px">모델 배치</p>
+        <div id="model-map" class="model-map">
+          <span class="pipeline-empty">—</span>
+        </div>
+
+        <p class="sidebar__label" style="margin-top:18px">RAG 검색 결과</p>
+        <div id="rag-panel" class="rag-panel">
+          <span class="pipeline-empty">이번 응답에서 RAG 미사용</span>
+        </div>
+
+        <p class="sidebar__label" style="margin-top:18px">MCP 도구 호출</p>
+        <div id="mcp-panel" class="mcp-panel">
+          <span class="pipeline-empty">이번 응답에서 MCP 미사용</span>
+        </div>
+
+        <p class="sidebar__label" style="margin-top:18px">추적 로그</p>
+        <div id="trace-path" class="trace-path">—</div>
+      </aside>
+    </div>
+
     <script src="/static/app.js"></script>
   </body>
 </html>

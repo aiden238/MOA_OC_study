@@ -261,10 +261,25 @@ class MOAExecutor:
         enriched_task.prompt = enriched_prompt
 
         # ── 1단계: Draft 3종 비동기 병렬 실행 ──
-        drafts = await run_all_drafts(enriched_task, model_overrides=self.model_overrides)
+        drafts, draft_failures = await run_all_drafts(enriched_task, model_overrides=self.model_overrides)
         for draft in drafts:
             _log_output(logger, draft, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(draft)
+        # 실패한 draft를 trace에 기록 (UI 표시용)
+        for failure in draft_failures:
+            logger.log(
+                agent_name=failure["agent_name"],
+                model="unknown",
+                input_prompt=enriched_task.prompt,
+                output_text="",
+                prompt_tokens=0,
+                completion_tokens=0,
+                latency_ms=0.0,
+                cost_estimate=0.0,
+                path="moa" + path_suffix,
+                operation_type="agent_failure",
+                metadata={"reason": failure["reason"]},
+            )
 
         # ── 2단계: Critic이 draft 비교 분석 ──
         critic = CriticAgent(model_settings=self.model_overrides.get("critic"))

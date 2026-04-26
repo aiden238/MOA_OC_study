@@ -42,12 +42,14 @@ PROVIDER_LABELS = {
     "openai": "OpenAI",
     "gemini": "Gemini",
     "zai": "Z.AI",
+    "cerebras": "Cerebras",
 }
 
 PROVIDER_KEY_ENV = {
     "openai": ("OPENAI_API_KEY",),
     "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
     "zai": ("ZAI_API_KEY", "ZHIPU_API_KEY"),
+    "cerebras": ("CEREBRAS_API_KEY",),
 }
 
 MODEL_CATALOG: tuple[dict[str, Any], ...] = (
@@ -90,6 +92,14 @@ MODEL_CATALOG: tuple[dict[str, Any], ...] = (
         "category": "creative",
         "supports_reasoning": True,
         "supports_temperature": False,
+    },
+    {
+        "provider": "cerebras",
+        "model": "qwen-3-235b-a22b-instruct-2507",
+        "label": "Qwen3-235B (Cerebras)",
+        "category": "creative",
+        "supports_reasoning": False,
+        "supports_temperature": True,
     },
 )
 
@@ -142,6 +152,16 @@ PRESET_CATALOG: tuple[dict[str, Any], ...] = (
             "draft_structured": {"provider": "openai", "model": "gpt-4o-mini"},
         },
         "required_providers": ["openai", "gemini", "zai"],
+    },
+    {
+        "id": "cerebras_creative",
+        "label": "OpenAI + Cerebras Creative",
+        "description": "Cerebras Qwen3-235B handles creative draft; OpenAI manages the rest.",
+        "global_model": {"provider": "openai", "model": "gpt-4o-mini"},
+        "agent_overrides": {
+            "draft_creative": {"provider": "cerebras", "model": "qwen-3-235b-a22b-instruct-2507"},
+        },
+        "required_providers": ["openai", "cerebras"],
     },
 )
 

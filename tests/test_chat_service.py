@@ -167,3 +167,139 @@ class TestRunChatTurn:
         assert response.evaluation["avg_score"] == 4.25
         assert response.selected_models["draft_creative"].provider == "zai"
         assert response.selected_models["draft_creative"].active is True
+
+    @pytest.mark.asyncio
+    async def test_forced_moa_with_rag_constraint_exposes_rag_sources(self, tmp_path: Path):
+        async def fake_run_moa_task(task, logger, cost_tracker, routing=None, model_settings=None):
+            assert routing is not None
+            assert routing.requires_rag is True
+            assert routing.requires_mcp is False
+
+            draft = _output("draft_analytical", "draft")
+            synth = _output("synthesizer", "rag reply")
+
+            logger.log(
+                agent_name="rag_retriever",
+                model="text-embedding-3-small",
+                input_prompt=task.prompt,
+                output_text="retrieved context",
+                prompt_tokens=0,
+                completion_tokens=0,
+                latency_ms=0.0,
+                cost_estimate=0.0,
+                path="moa+rag",
+                operation_type="rag",
+                metadata={
+                    "stage": "context_build",
+                    "selected_chunks": [
+                        {
+                            "source_path": "data/rag_docs/doc_a.txt",
+                            "normalized_relevance": 0.91,
+                            "text": "chunk a",
+                        },
+                        {
+                            "source": "doc_b.md",
+                            "score": 0.73,
+                            "text": "chunk b",
+                        },
+                    ],
+                    "context_token_estimate": 42,
+                    "selected_count": 2,
+                },
+            )
+            logger.log(
+                agent_name=synth.agent_name,
+                model=synth.model,
+                input_prompt=task.prompt,
+                output_text=synth.content,
+                prompt_tokens=synth.prompt_tokens,
+                completion_tokens=synth.completion_tokens,
+                latency_ms=synth.latency_ms,
+                cost_estimate=synth.cost_estimate,
+                path="moa+rag",
+                operation_type="llm_completion",
+            )
+            return synth.content, [draft, synth]
+
+        request = ChatTurnRequest(
+            prompt="Use the rag docs.",
+            force_path="moa",
+            constraints={"source": "rag_docs"},
+        )
+
+        with patch(
+            "app.services.chat_service.run_moa_task",
+            new=AsyncMock(side_effect=fake_run_moa_task),
+        ), patch(
+            "app.services.chat_service.TraceLogger.save",
+            return_value=tmp_path / "trace.json",
+        ):
+            response = await run_chat_turn(request, output_dir=tmp_path)
+
+        assert response.path == "moa+rag"
+        assert response.context_metadata["routing"]["requires_rag"] is True
+        assert response.context_metadata["rag"]["token_estimate"] == 42
+        assert response.context_metadata["rag_sources"] == [
+            {"source": "doc_a.txt", "score": 0.91},
+            {"source": "doc_b.md", "score": 0.73},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_forced_moa_with_mcp_constraint_sets_mcp_routing(self, tmp_path: Path):
+        async def fake_run_moa_task(task, logger, cost_tracker, routing=None, model_settings=None):
+            assert routing is not None
+            assert routing.requires_rag is False
+            assert routing.requires_mcp is True
+            assert routing.mcp_intent == "user_forced"
+
+            synth = _output("synthesizer", "mcp reply")
+            logger.log(
+                agent_name="mcp_filesystem",
+                model="filesystem",
+                input_prompt=task.prompt,
+                output_text="summary",
+                prompt_tokens=0,
+                completion_tokens=0,
+                latency_ms=0.0,
+                cost_estimate=0.0,
+                path="moa+mcp",
+                operation_type="mcp_tool",
+                metadata={
+                    "server_name": "filesystem",
+                    "tool_name": "list_files",
+                    "success": True,
+                    "normalized_result_summary": "listed files",
+                },
+            )
+            logger.log(
+                agent_name=synth.agent_name,
+                model=synth.model,
+                input_prompt=task.prompt,
+                output_text=synth.content,
+                prompt_tokens=synth.prompt_tokens,
+                completion_tokens=synth.completion_tokens,
+                latency_ms=synth.latency_ms,
+                cost_estimate=synth.cost_estimate,
+                path="moa+mcp",
+                operation_type="llm_completion",
+            )
+            return synth.content, [synth]
+
+        request = ChatTurnRequest(
+            prompt="List files with MCP.",
+            force_path="moa",
+            constraints={"use_mcp": True},
+        )
+
+        with patch(
+            "app.services.chat_service.run_moa_task",
+            new=AsyncMock(side_effect=fake_run_moa_task),
+        ), patch(
+            "app.services.chat_service.TraceLogger.save",
+            return_value=tmp_path / "trace.json",
+        ):
+            response = await run_chat_turn(request, output_dir=tmp_path)
+
+        assert response.path == "moa+mcp"
+        assert response.context_metadata["routing"]["requires_mcp"] is True
+        assert response.context_metadata["mcp"]["tool_name"] == "list_files"

@@ -66,6 +66,7 @@ class BaseAgent:
             return False  # ZAI reasoning models don't support custom temperature
         if provider == "openai":
             return not model.startswith("gpt-5")
+        # cerebras (Qwen3), gemini, and other OpenAI-compat providers support temperature
         return True
 
     @staticmethod

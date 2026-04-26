@@ -23,6 +23,7 @@ class ContextBuilder:
         selected_chunks: list[dict[str, Any]] = []
         seen_texts: set[str] = set()
         total_tokens = 0
+        total_chunks = len(items)
 
         for item in items:
             if len(selected_chunks) >= self.injection_top_k:
@@ -49,8 +50,10 @@ class ContextBuilder:
             selected_chunks.append({
                 "label": label,
                 "doc_id": item.get("doc_id"),
+                "source": source_name,
                 "source_path": source_path,
                 "chunk_id": chunk_id,
+                "score": item.get("normalized_relevance"),
                 "raw_distance": item.get("raw_distance"),
                 "normalized_relevance": item.get("normalized_relevance"),
                 "text": text,
@@ -58,7 +61,9 @@ class ContextBuilder:
 
         metadata = {
             "selected_chunks": selected_chunks,
+            "token_estimate": total_tokens,
             "context_token_estimate": total_tokens,
             "selected_count": len(selected_chunks),
+            "total_chunks": total_chunks,
         }
         return "\n\n".join(sections), metadata

@@ -97,6 +97,10 @@ def test_context_builder_formats_chunks():
     ])
     assert "[참고 문서 1 | doc1.txt | chunk 0]" in context
     assert metadata["selected_count"] == 2
+    assert metadata["token_estimate"] == metadata["context_token_estimate"]
+    assert metadata["total_chunks"] == 2
+    assert metadata["selected_chunks"][0]["source"] == "doc1.txt"
+    assert metadata["selected_chunks"][0]["score"] == 0.9
 
 
 @pytest.mark.asyncio

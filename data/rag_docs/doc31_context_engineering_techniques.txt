@@ -1,0 +1,73 @@
+컨텍스트 엔지니어링 심화 기법
+
+컨텍스트 엔지니어링의 고급 기법들로 LLM의 성능을 극대화하는 전략입니다.
+
+1. 동적 컨텍스트 조립(Dynamic Context Assembly)
+요청마다 컨텍스트를 동적으로 구성:
+```python
+context_parts = []
+if requires_rag:
+    context_parts.append(rag_context)      # 검색된 문서
+if requires_mcp:
+    context_parts.append(tool_result)      # 도구 실행 결과
+if has_conversation_history:
+    context_parts.append(recent_history)   # 최근 대화
+final_prompt = base_prompt + "\n\n".join(context_parts)
+```
+
+2. 컨텍스트 우선순위 스코어링
+각 정보 조각에 우선순위 점수를 부여하고 고득점 순으로 포함:
+- 현재 질문과의 관련성 (0~1)
+- 정보의 최신성 (오래될수록 낮음)
+- 정보의 신뢰도 (출처 신뢰도)
+- 이전 사용 빈도 (많이 사용된 정보)
+
+3. 컨텍스트 체크포인팅
+긴 작업에서 중간 상태를 저장하는 전략:
+```python
+checkpoint = {
+    "step": 3,
+    "completed_tasks": ["분석", "초안 작성"],
+    "current_state": "검토 중",
+    "intermediate_results": {...}
+}
+# 오류 발생 시 체크포인트에서 재시작
+```
+
+4. 적응형 프롬프팅(Adaptive Prompting)
+이전 실행 결과에 따라 프롬프트를 동적으로 수정:
+- judge가 "너무 짧음"이라는 피드백 → 다음 프롬프트에 "더 상세하게" 추가
+- 특정 오류 반복 → 해당 오류 방지 지시 자동 추가
+
+5. Negative Space 컨텍스트
+하지 말아야 할 것을 명시하는 역방향 컨텍스트:
+```
+[이전 실패 패턴]
+- 이전 답변에서 논문 참고 없이 사실을 주장하여 오류 발생
+- 이번에는 반드시 불확실한 내용은 "~로 알려져 있다" 형식으로 표현
+```
+
+6. 컨텍스트 재사용 최적화
+동일한 긴 컨텍스트를 여러 에이전트에 재사용:
+- Shared prefix: 공통 부분을 먼저 캐싱
+- 각 에이전트는 캐시된 공통 부분 + 역할별 추가 컨텍스트
+- OpenAI/Anthropic 캐싱으로 비용 절감
+
+7. 인터리브드 컨텍스트(Interleaved Context)
+관련 코드와 설명을 교차 배치:
+```
+[함수 코드]
+def process(data):
+    return data * 2
+
+[설명]
+위 함수는 데이터를 2배로 처리합니다.
+[다음 코드]
+...
+```
+→ 코드와 맥락을 교차하면 LLM 이해도 향상
+
+8. 목표 정렬 컨텍스트(Goal-Aligned Context)
+현재 목표를 항상 컨텍스트에 명시:
+"[현재 목표: MOA 파이프라인에서 RAG 통합 완료]
+아래 작업은 이 목표 달성을 위한 것입니다..."

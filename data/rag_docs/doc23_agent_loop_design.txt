@@ -1,0 +1,57 @@
+에이전트 루프 설계 (ReAct, Plan-and-Execute)
+
+에이전트 루프(Agent Loop)는 에이전트가 목표를 달성하기 위해 반복적으로 관찰(Observe) → 추론(Reason) → 행동(Act) 하는 사이클을 정의하는 핵심 설계 패턴입니다.
+
+ReAct (Reasoning + Acting) 패턴:
+가장 널리 사용되는 에이전트 루프 패턴:
+```
+Thought: 현재 상황을 분석하고 다음 행동을 계획
+Action: 도구 또는 다음 에이전트 호출
+Observation: 행동의 결과를 관찰
+... (반복) ...
+Final Answer: 목표 달성 시 최종 답변 반환
+```
+
+ReAct 프롬프트 예시:
+```
+Thought: 파일 시스템에서 Python 파일을 찾아야 한다
+Action: search_files(path="./", pattern="*.py")
+Observation: ['main.py', 'utils.py', 'agent.py'] 발견
+Thought: agent.py가 관련 파일일 것 같다
+Action: read_file(path="agent.py")
+Observation: [파일 내용...]
+Final Answer: 에이전트 구현은 agent.py에 있으며...
+```
+
+Plan-and-Execute 패턴:
+복잡한 태스크를 위해 먼저 전체 계획을 수립한 후 실행:
+1. 플래너(Planner): 태스크를 하위 단계로 분해
+2. 실행기(Executor): 각 단계를 순차 또는 병렬로 실행
+3. 재계획(Replan): 실행 결과에 따라 계획 수정
+
+장점: 긴 태스크에서의 일관성, 중간 검증 가능
+단점: 초기 계획이 잘못되면 전체 실행에 영향
+
+MOA의 Judge-Rewrite 루프:
+```
+Judge → if "rewrite": Rewrite → Judge → if "rewrite": Rewrite → ...
+최대 MAX_REWRITE_LOOPS(=2)번 반복 후 종료
+```
+
+루프 종료 조건 설계:
+1. 성공 조건: 품질 기준 달성 ("pass")
+2. 실패 조건: 최대 반복 횟수 초과
+3. 에스컬레이션: 자동 해결 불가 판단 ("escalate")
+4. 타임아웃: 전체 실행 시간 제한
+
+무한 루프 방지:
+- MAX_ITERATIONS 하드 제한
+- 수렴 감지: 이전 상태와 동일하면 중단
+- 비용 한도: 토큰 소비 상한선
+- 상태 해시: 동일 상태 반복 감지
+
+병렬 루프 설계:
+asyncio.gather()를 사용해 독립적인 에이전트들을 병렬로 실행:
+- 독립성 보장: 에이전트 간 직접 통신 없음
+- 결과 집계: gather 완료 후 오케스트레이터가 합산
+- 실패 격리: return_exceptions=True로 부분 실패 허용

@@ -58,10 +58,24 @@
           <div id="agent-overrides" class="agent-grid"></div>
         </details>
 
+        <!-- RAG 지식 베이스 패널 -->
+        <details class="sidebar__section sidebar__knowledge" id="knowledge-section" open>
+          <summary class="sidebar__label sidebar__adv-toggle">
+            <span>📚 RAG 지식 베이스</span>
+            <span class="adv-arrow" id="knowledge-arrow">›</span>
+          </summary>
+          <div id="knowledge-panel" class="knowledge-panel">
+            <div class="knowledge-loading">
+              <span class="spinner"></span> 로딩 중...
+            </div>
+          </div>
+        </details>
+
         <div class="sidebar__footer">
           <span class="provider-dot openai-dot"></span>OpenAI
           <span class="provider-dot zai-dot"></span>Z.AI
-          <span class="provider-dot gemini-dot unavail"></span>Gemini
+          <span class="provider-dot gemini-dot"></span>Gemini
+          <span class="provider-dot cerebras-dot"></span>Cerebras
         </div>
       </aside>
 

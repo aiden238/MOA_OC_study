@@ -1,0 +1,66 @@
+에러 처리 및 폴백 전략
+
+에이전트 시스템에서 견고한 에러 처리는 프로덕션 품질의 핵심입니다. LLM API는 네트워크 오류, 레이트 리밋, 모델 오류 등 다양한 실패 원인이 존재합니다.
+
+오류 유형 분류:
+
+1. 일시적 오류(Transient Errors) - 재시도 가능
+- 429 Too Many Requests: 레이트 리밋
+- 503 Service Unavailable: 서버 일시 과부하
+- 네트워크 타임아웃
+
+2. 영구적 오류(Permanent Errors) - 재시도 불필요
+- 400 Bad Request: 잘못된 요청 형식
+- 401 Unauthorized: API 키 오류
+- 404 Not Found: 모델 미존재
+- 422 Unprocessable Entity: 스키마 오류
+
+3. 논리적 오류(Logical Errors) - 프롬프트 수정 필요
+- JSON 파싱 실패: 모델이 형식 오류 출력
+- 빈 응답: 모델이 아무 내용도 생성하지 않음
+- 반복 출력: 동일 내용을 계속 생성
+
+재시도 전략:
+```python
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((HTTPStatusError, ConnectError)),
+)
+async def call_llm(prompt):
+    ...
+```
+
+지수 백오프(Exponential Backoff):
+- 1번째 재시도: 1초 대기
+- 2번째 재시도: 2초 대기
+- 3번째 재시도: 4초 대기
+- Retry-After 헤더가 있으면 해당 시간만큼 대기
+
+폴백 계층(Fallback Hierarchy):
+1. 동일 모델 재시도
+2. 동일 프로바이더의 다른 모델로 전환
+3. 다른 프로바이더의 동등 모델로 전환
+4. 더 단순한 처리 경로로 전환 (MOA → Single)
+5. 에러 메시지를 사용자에게 반환
+
+Graceful Degradation 패턴:
+하나의 컴포넌트 실패가 전체 시스템 실패로 이어지지 않도록:
+```python
+# 3개 draft 중 1개 실패 → 2개로 진행
+results = await asyncio.gather(*tasks, return_exceptions=True)
+successful = [r for r in results if not isinstance(r, Exception)]
+if not successful:
+    raise RuntimeError("모든 에이전트 실패")
+```
+
+Circuit Breaker 패턴:
+특정 서비스의 실패율이 임계치를 초과하면 자동으로 차단:
+- Closed: 정상 상태, 모든 요청 통과
+- Open: 장애 상태, 즉시 폴백 반환
+- Half-Open: 복구 테스트, 제한적 요청 허용
+
+오류 가시성:
+- 모든 실패를 trace 로그에 기록 (agent_failure 타입)
+- UI에 실패한 에이전트 표시 (⚠ 배지)
+- 사용자에게 부분 성공 여부 명확히 안내

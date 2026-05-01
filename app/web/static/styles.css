@@ -782,6 +782,143 @@ details[open] .adv-arrow { transform: rotate(90deg); }
 }
 
 /* ══════════════════════════════════════
+   Cerebras 프로바이더 도트
+══════════════════════════════════════ */
+.cerebras-dot { background: #f59e0b; }
+
+/* ══════════════════════════════════════
+   RAG 지식 베이스 패널 (Week 12-1)
+══════════════════════════════════════ */
+.sidebar__knowledge {
+  border-top: 1px solid var(--border-dark);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.knowledge-panel {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.knowledge-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+.knowledge-summary {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border-dark);
+  margin-bottom: 4px;
+}
+
+.knowledge-summary strong {
+  color: var(--text-primary);
+}
+
+/* 카테고리 아코디언 */
+.knowledge-cat {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(255,255,255,0.03);
+}
+
+.knowledge-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.knowledge-cat-header::-webkit-details-marker { display: none; }
+
+.knowledge-cat-icon { font-size: 13px; }
+
+.knowledge-cat-label {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.knowledge-cat-badge {
+  font-size: 10px;
+  background: rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.knowledge-cat-body {
+  padding: 6px 8px 8px;
+}
+
+/* 문서 목록 */
+.knowledge-docs {
+  margin-bottom: 6px;
+}
+
+.knowledge-doc-item {
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid rgba(255,255,255,0.08);
+  margin-bottom: 2px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.knowledge-doc-more {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 2px 0 2px 10px;
+  font-style: italic;
+}
+
+/* 예시 질문 버튼 */
+.knowledge-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.knowledge-example-q {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 4px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.4;
+  font-family: var(--font);
+}
+
+.knowledge-example-q:hover {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.3);
+  color: var(--text-primary);
+}
+
+/* ══════════════════════════════════════
    스크롤바
 ══════════════════════════════════════ */
 ::-webkit-scrollbar { width: 6px; }

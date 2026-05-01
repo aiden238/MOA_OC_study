@@ -627,5 +627,78 @@ promptInputEl.addEventListener("keydown", (event) => {
   }
 });
 
+// ── RAG 지식 베이스 패널 ──────────────────────────────────────────────
+
+const CATEGORY_COLORS = {
+  blue:   { bg: "rgba(59,130,246,0.12)", border: "#3B82F6", text: "#3B82F6" },
+  green:  { bg: "rgba(16,185,129,0.12)", border: "#10B981", text: "#10B981" },
+  orange: { bg: "rgba(245,158,11,0.12)", border: "#F59E0B", text: "#D97706" },
+  purple: { bg: "rgba(139,92,246,0.12)", border: "#8B5CF6", text: "#8B5CF6" },
+  gray:   { bg: "rgba(107,114,128,0.10)", border: "#6B7280", text: "#6B7280" },
+};
+
+function fillQuestionFromExample(question) {
+  promptInputEl.value = question;
+  promptInputEl.focus();
+  // RAG 경로 자동 선택
+  setPathSelection("rag");
+}
+
+function renderKnowledgePanel(data) {
+  const panel = document.getElementById("knowledge-panel");
+  if (!panel) return;
+
+  if (!data || !data.categories || data.categories.length === 0) {
+    panel.innerHTML = '<span class="pipeline-empty">RAG 문서 없음</span>';
+    return;
+  }
+
+  const summaryHtml = `
+    <div class="knowledge-summary">
+      📄 총 <strong>${data.total_docs}</strong>개 문서 &nbsp;·&nbsp;
+      🗂️ <strong>${data.categories.length}</strong>개 카테고리
+    </div>`;
+
+  const categoriesHtml = data.categories.map((cat) => {
+    const c = CATEGORY_COLORS[cat.color] || CATEGORY_COLORS.gray;
+    const docsHtml = cat.docs.slice(0, 4).map((doc) =>
+      `<div class="knowledge-doc-item">${escapeHtml(doc.title)}</div>`
+    ).join("") + (cat.docs.length > 4
+      ? `<div class="knowledge-doc-more">+${cat.docs.length - 4}개 더...</div>` : "");
+
+    const questionsHtml = cat.example_questions.map((q) =>
+      `<button class="knowledge-example-q" onclick="fillQuestionFromExample(${JSON.stringify(q)})">
+        💬 ${escapeHtml(q)}
+      </button>`
+    ).join("");
+
+    return `
+      <details class="knowledge-cat" open>
+        <summary class="knowledge-cat-header" style="border-left:3px solid ${c.border}; background:${c.bg}">
+          <span class="knowledge-cat-icon">${cat.icon}</span>
+          <span class="knowledge-cat-label" style="color:${c.text}">${cat.label}</span>
+          <span class="knowledge-cat-badge">${cat.doc_count}</span>
+        </summary>
+        <div class="knowledge-cat-body">
+          <div class="knowledge-docs">${docsHtml}</div>
+          <div class="knowledge-questions">${questionsHtml}</div>
+        </div>
+      </details>`;
+  }).join("");
+
+  panel.innerHTML = summaryHtml + categoriesHtml;
+}
+
+async function loadKnowledgePanel() {
+  try {
+    const res = await fetch("/api/rag-knowledge");
+    const data = await res.json();
+    renderKnowledgePanel(data);
+  } catch (e) {
+    const panel = document.getElementById("knowledge-panel");
+    if (panel) panel.innerHTML = '<span class="pipeline-empty">로딩 실패</span>';
+  }
+}
+
 setPathSelection("auto");
-loadRegistry().then(createSession);
+loadRegistry().then(() => { createSession(); loadKnowledgePanel(); });

@@ -1,0 +1,52 @@
+맥락 유지법 (Context Persistence)
+
+맥락 유지(Context Persistence)는 멀티턴 대화나 긴 작업 흐름에서 에이전트가 이전 상태와 정보를 지속적으로 참조하고 활용할 수 있도록 보장하는 기법입니다.
+
+맥락이 손실되는 주요 원인:
+1. 컨텍스트 윈도우 초과: 오래된 메시지가 잘림
+2. 세션 재시작: 새 세션에서 이전 정보 없음
+3. 에이전트 전환: 다른 에이전트가 이전 에이전트의 상태를 모름
+4. 병렬 실행: 각 에이전트가 독립적으로 실행되어 공유 상태 없음
+
+맥락 유지 기법:
+
+1. 명시적 상태 전달(Explicit State Passing)
+각 에이전트 호출 시 관련 컨텍스트를 명시적으로 포함:
+```python
+enriched_prompt = original_prompt + "\n\n[이전 분석 결과]\n" + previous_output
+```
+
+2. 공유 메모리(Shared Memory)
+여러 에이전트가 접근 가능한 중앙 저장소:
+```python
+shared_context = {
+    "task_id": "abc123",
+    "original_request": "...",
+    "intermediate_results": {},
+    "current_state": "synthesizing"
+}
+```
+
+3. 지식 그래프(Knowledge Graph)
+개체와 관계를 그래프로 저장하여 복잡한 맥락 유지:
+- 노드: 개념, 개체, 결정 사항
+- 에지: 관계, 의존성, 순서
+- 쿼리: 특정 노드와 관련된 모든 맥락 검색
+
+4. 에피소드 메모리(Episodic Memory)
+중요한 사건이나 결정을 타임스탬프와 함께 저장:
+```
+[2026-05-03 10:30] 사용자가 Cerebras 통합 요청
+[2026-05-03 10:35] 모델명 qwen-3-235b-a22b-instruct-2507 확인
+[2026-05-03 10:40] draft_creative에 Cerebras 할당 완료
+```
+
+5. 벡터 기반 의미 검색(Semantic Memory)
+관련 이전 경험을 임베딩으로 저장하고 유사도 검색:
+- 현재 질문과 의미적으로 유사한 이전 대화 검색
+- RAG 파이프라인을 메모리 저장소로 활용
+
+맥락 재주입(Context Re-injection) 전략:
+- 세션 시작 시 이전 세션 요약 자동 포함
+- 특정 키워드 감지 시 관련 과거 정보 로드
+- 주기적으로 현재 작업 상태를 명시적으로 확인

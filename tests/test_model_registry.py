@@ -10,7 +10,7 @@ class TestGetModelRegistryPayload:
     def test_payload_exposes_week10_registry(self):
         payload = get_model_registry_payload()
 
-        assert {provider["id"] for provider in payload["providers"]} == {"openai", "gemini", "zai"}
+        assert {provider["id"] for provider in payload["providers"]} == {"openai", "gemini", "zai", "cerebras"}
         assert "single_baseline" in payload["agents"]
         assert any(model["model"] == "gpt-4o-mini" for model in payload["models"])
         assert any(preset["id"] == "mixed_research_mode" for preset in payload["presets"])

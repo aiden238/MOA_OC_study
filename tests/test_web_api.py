@@ -21,8 +21,59 @@ class TestWebApi:
 
         assert response.status_code == 200
         payload = response.json()
-        assert {provider["id"] for provider in payload["providers"]} == {"openai", "gemini", "zai"}
+        assert {provider["id"] for provider in payload["providers"]} == {"openai", "gemini", "zai", "cerebras"}
         assert "single_baseline" in payload["agents"]
+
+    def test_knowledge_graph_endpoint_returns_nodes_and_edges(self):
+        client = _client()
+
+        response = client.get("/api/knowledge-graph")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["stats"]["node_count"] > 0
+        assert payload["stats"]["edge_count"] > 0
+        assert any(node["type"] == "document" for node in payload["nodes"])
+
+    def test_wiki_manual_candidate_round_trip(self, tmp_path):
+        client = _client()
+        original_service = server.wiki_update_service
+        server.wiki_update_service = server.WikiUpdateService(
+            docs_dir=tmp_path / "rag_docs",
+            state_dir=tmp_path / "wiki_state",
+            knowledge_graph_dir=tmp_path / "knowledge_graph",
+            chroma_dir=tmp_path / "chroma",
+        )
+        server.wiki_update_service.docs_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            create_response = client.post(
+                "/api/wiki/manual-candidate",
+                json={
+                    "title": "Reasoning Trace Compression",
+                    "content": "Compress long reasoning traces before synthesis.",
+                    "summary": "A compact reasoning compression note.",
+                    "category": "advanced",
+                    "tags": ["reasoning", "compression"],
+                },
+            )
+            assert create_response.status_code == 200
+            pending_id = create_response.json()["pending_id"]
+
+            pending_response = client.get("/api/wiki/pending")
+            assert pending_response.status_code == 200
+            assert len(pending_response.json()["items"]) == 1
+
+            approve_response = client.post(f"/api/wiki/pending/{pending_id}/approve")
+            assert approve_response.status_code == 200
+            payload = approve_response.json()
+            assert payload["filename"].startswith("wiki_")
+
+            status_response = client.get("/api/wiki/status")
+            assert status_response.status_code == 200
+            status_payload = status_response.json()
+            assert status_payload["approved_count"] == 1
+        finally:
+            server.wiki_update_service = original_service
 
     def test_chat_endpoint_creates_session_and_persists_messages(self):
         client = _client()

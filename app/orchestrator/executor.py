@@ -88,8 +88,9 @@ class MOAExecutor:
             (최종 출력 텍스트, 모든 에이전트 출력 리스트)
         """
         # 지연 import로 순환 의존성 방지
-        from app.core.config import EMBEDDING_MODEL
+        from app.core.config import EMBEDDING_MODEL, RAG_DOCS_DIR
         from app.rag.context_builder import ContextBuilder
+        from app.rag.knowledge_graph import expand_query_with_graph
         from app.rag.retriever import ChromaRetriever, SimpleRetriever
         from app.mcp_client.client import MCPClient
 
@@ -101,6 +102,8 @@ class MOAExecutor:
         if routing is not None:
             if getattr(routing, "requires_rag", False):
                 rag_query = getattr(routing, "rag_query_hint", None) or task.prompt
+                graph_context = expand_query_with_graph(RAG_DOCS_DIR, rag_query)
+                retrieval_query = graph_context["expanded_query"]
                 rag_items = []
                 fallback_reason = None
                 retriever_name = "ChromaRetriever"
@@ -128,18 +131,18 @@ class MOAExecutor:
                                 "source_count": index_info.get("source_count", 0),
                             },
                         )
-                    rag_items = await retriever.query_items(rag_query, n_results=5)
+                    rag_items = await retriever.query_items(retrieval_query, n_results=5)
                 except Exception as exc:
                     fallback_reason = str(exc)
                     retriever_name = "SimpleRetriever"
                     retriever = SimpleRetriever.from_directory()
-                    rag_items = retriever.query_items(rag_query, n_results=5)
+                    rag_items = retriever.query_items(retrieval_query, n_results=5)
                     embedding_model = getattr(retriever, "collection_name", "simple-retriever")
 
                 logger.log(
                     agent_name="rag_retriever",
                     model=embedding_model,
-                    input_prompt=rag_query,
+                    input_prompt=retrieval_query,
                     output_text="",
                     prompt_tokens=0,
                     completion_tokens=0,
@@ -151,8 +154,12 @@ class MOAExecutor:
                         "stage": "retrieval",
                         "retriever": retriever_name,
                         "query": rag_query,
+                        "graph_query": retrieval_query,
                         "hit_count": len(rag_items),
                         "fallback_reason": fallback_reason,
+                        "graph_highlighted_node_ids": graph_context["highlighted_node_ids"],
+                        "graph_expansion_terms": graph_context["expansion_terms"],
+                        "graph_subgraph": graph_context["subgraph"],
                         "results": [
                             {
                                 "doc_id": item.get("doc_id"),
@@ -177,7 +184,7 @@ class MOAExecutor:
                 logger.log(
                     agent_name="rag_retriever",
                     model=embedding_model,
-                    input_prompt=rag_query,
+                    input_prompt=retrieval_query,
                     output_text=rag_context,
                     prompt_tokens=0,
                     completion_tokens=0,
@@ -191,6 +198,11 @@ class MOAExecutor:
                         "rag_miss": not rag_hit,
                         "fallback_reason": fallback_reason,
                         "query": rag_query,
+                        "graph_query": retrieval_query,
+                        "graph_highlighted_node_ids": graph_context["highlighted_node_ids"],
+                        "graph_highlighted_nodes": graph_context["highlighted_nodes"],
+                        "graph_expansion_terms": graph_context["expansion_terms"],
+                        "graph_subgraph": graph_context["subgraph"],
                         **context_meta,
                     },
                 )
@@ -261,7 +273,11 @@ class MOAExecutor:
         enriched_task.prompt = enriched_prompt
 
         # ── 1단계: Draft 3종 비동기 병렬 실행 ──
-        drafts, draft_failures = await run_all_drafts(enriched_task, model_overrides=self.model_overrides)
+        draft_result = await run_all_drafts(enriched_task, model_overrides=self.model_overrides)
+        if isinstance(draft_result, tuple) and len(draft_result) == 2:
+            drafts, draft_failures = draft_result
+        else:
+            drafts, draft_failures = draft_result, []
         for draft in drafts:
             _log_output(logger, draft, enriched_task.prompt, path="moa" + path_suffix)
             all_outputs.append(draft)

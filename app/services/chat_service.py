@@ -289,6 +289,15 @@ def _build_context_metadata(
         if "retriever" in rag_retrieval_meta and "retriever_type" not in rag_retrieval_meta:
             rag_retrieval_meta["retriever_type"] = rag_retrieval_meta["retriever"]
         context_metadata["rag_retrieval"] = rag_retrieval_meta
+        graph_subgraph = rag_retrieval_meta.get("graph_subgraph") or {}
+        context_metadata["graph"] = {
+            "query": rag_retrieval_meta.get("query", ""),
+            "graph_query": rag_retrieval_meta.get("graph_query", rag_retrieval_meta.get("query", "")),
+            "highlighted_node_ids": rag_retrieval_meta.get("graph_highlighted_node_ids", []),
+            "expansion_terms": rag_retrieval_meta.get("graph_expansion_terms", []),
+            "subgraph": graph_subgraph,
+        }
+        evaluation_context["graph"] = context_metadata["graph"]
     if context_build_record is not None:
         rag_meta = dict(context_build_record.get("metadata", {}))
         rag_meta.setdefault("token_estimate", rag_meta.get("context_token_estimate", 0))
@@ -296,6 +305,24 @@ def _build_context_metadata(
         rag_meta.setdefault("total_chunks", rag_meta.get("selected_count", 0))
         context_metadata["rag"] = rag_meta
         context_metadata["rag_sources"] = _extract_rag_sources(rag_meta.get("selected_chunks", []))
+        context_metadata.setdefault("graph", {})
+        context_metadata["graph"].update(
+            {
+                "highlighted_nodes": rag_meta.get("graph_highlighted_nodes", []),
+                "highlighted_node_ids": rag_meta.get(
+                    "graph_highlighted_node_ids",
+                    context_metadata["graph"].get("highlighted_node_ids", []),
+                ),
+                "expansion_terms": rag_meta.get(
+                    "graph_expansion_terms",
+                    context_metadata["graph"].get("expansion_terms", []),
+                ),
+                "subgraph": rag_meta.get(
+                    "graph_subgraph",
+                    context_metadata["graph"].get("subgraph", {}),
+                ),
+            }
+        )
         evaluation_context["retrieval_context"] = context_build_record.get("output_text", "")
         evaluation_context["selected_chunks"] = (
             rag_meta.get("selected_chunks", [])

@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MOA Lab - 멀티 에이전트 오케스트레이션</title>
+    <title>MOA Lab - Web Chat</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <header class="top-bar">
       <div class="top-bar__brand">
-        <span class="brand-icon">⬡</span>
+        <span class="brand-icon">M</span>
         <span class="brand-name">MOA <span class="brand-accent">Lab</span></span>
-        <span class="brand-tag">멀티 에이전트 오케스트레이션</span>
+        <span class="brand-tag">Multi-agent orchestration playground</span>
       </div>
       <div class="top-bar__session">
         <span id="session-badge" class="session-badge">세션 없음</span>
@@ -25,7 +25,7 @@
           <p class="sidebar__label">실행 경로</p>
           <div class="segmented" id="path-segmented">
             <button class="seg-btn active" data-value="auto">자동</button>
-            <button class="seg-btn" data-value="single">단일</button>
+            <button class="seg-btn" data-value="single">Single</button>
             <button class="seg-btn" data-value="moa">MOA</button>
             <button class="seg-btn" data-value="rag">RAG</button>
             <button class="seg-btn" data-value="mcp">MCP</button>
@@ -36,38 +36,59 @@
         <section class="sidebar__section">
           <p class="sidebar__label">프리셋</p>
           <select id="preset-select" class="ctrl-select">
-            <option value="">— 없음 —</option>
+            <option value="">없음</option>
           </select>
         </section>
 
         <section class="sidebar__section">
           <p class="sidebar__label">글로벌 모델</p>
           <select id="global-provider" class="ctrl-select">
-            <option value="">— 에이전트별 기본값 —</option>
+            <option value="">에이전트별 기본값</option>
           </select>
           <select id="global-model" class="ctrl-select" style="margin-top:8px" disabled>
-            <option value="">— 기본값 사용 —</option>
+            <option value="">기본값 사용</option>
           </select>
         </section>
 
         <details class="sidebar__section sidebar__advanced">
           <summary class="sidebar__label sidebar__adv-toggle">
-            <span>에이전트 개별 설정</span>
-            <span class="adv-arrow">›</span>
+            <span>에이전트 고급 설정</span>
+            <span class="adv-arrow">↕</span>
           </summary>
           <div id="agent-overrides" class="agent-grid"></div>
         </details>
 
-        <!-- RAG 지식 베이스 패널 -->
         <details class="sidebar__section sidebar__knowledge" id="knowledge-section" open>
           <summary class="sidebar__label sidebar__adv-toggle">
-            <span>📚 RAG 지식 베이스</span>
-            <span class="adv-arrow" id="knowledge-arrow">›</span>
+            <span>RAG 지식 베이스</span>
+            <span class="adv-arrow" id="knowledge-arrow">↕</span>
           </summary>
           <div id="knowledge-panel" class="knowledge-panel">
             <div class="knowledge-loading">
               <span class="spinner"></span> 로딩 중...
             </div>
+          </div>
+        </details>
+
+        <details class="sidebar__section sidebar__knowledge" id="graph-section" open>
+          <summary class="sidebar__label sidebar__adv-toggle">
+            <span>Knowledge Graph</span>
+            <span class="adv-arrow">↕</span>
+          </summary>
+          <div class="graph-toolbar">
+            <select id="graph-category-filter" class="ctrl-select">
+              <option value="all">All Categories</option>
+              <option value="prompt_engineering">Prompt</option>
+              <option value="context_engineering">Context</option>
+              <option value="harness_engineering">Harness</option>
+              <option value="advanced">Advanced</option>
+              <option value="basics">Basics</option>
+            </select>
+            <button id="graph-expand-btn" type="button" class="graph-expand-btn">크게 보기</button>
+          </div>
+          <div id="knowledge-graph-canvas" class="knowledge-graph-canvas"></div>
+          <div id="knowledge-graph-detail" class="knowledge-graph-detail">
+            <span class="pipeline-empty">Select a node to inspect graph details.</span>
           </div>
         </details>
 
@@ -82,11 +103,11 @@
       <main class="chat-area">
         <div id="messages" class="messages">
           <div class="welcome-card">
-            <div class="welcome-icon">⬡</div>
-            <h2>MOA Lab에 오신 것을 환영합니다</h2>
-            <p>단일 LLM 호출부터 멀티 에이전트 오케스트레이션, RAG, MCP까지<br />다양한 실행 경로로 AI 응답을 비교 실험합니다.</p>
+            <div class="welcome-icon">M</div>
+            <h2>MOA Lab에서 질문을 시작하세요</h2>
+            <p>Single, MOA, RAG, MCP 경로를 비교하면서 응답과 trace를 함께 볼 수 있습니다.</p>
             <div class="welcome-chips">
-              <span class="chip">Draft × 3</span>
+              <span class="chip">Draft x3</span>
               <span class="chip">Critic</span>
               <span class="chip">Judge</span>
               <span class="chip">Synthesizer</span>
@@ -115,38 +136,38 @@
         <div class="metric-grid" id="metric-grid">
           <div class="metric-card">
             <span class="metric-label">경로</span>
-            <span class="metric-value" id="m-path">—</span>
+            <span class="metric-value" id="m-path">-</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">응답 속도</span>
-            <span class="metric-value" id="m-latency">—</span>
+            <span class="metric-value" id="m-latency">-</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">입력 토큰</span>
-            <span class="metric-value" id="m-prompt-tok">—</span>
+            <span class="metric-value" id="m-prompt-tok">-</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">출력 토큰</span>
-            <span class="metric-value" id="m-comp-tok">—</span>
+            <span class="metric-value" id="m-comp-tok">-</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">비용 (USD)</span>
-            <span class="metric-value" id="m-cost">—</span>
+            <span class="metric-value" id="m-cost">-</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">에이전트 수</span>
-            <span class="metric-value" id="m-agents">—</span>
+            <span class="metric-value" id="m-agents">-</span>
           </div>
         </div>
 
         <p class="sidebar__label" style="margin-top:18px">에이전트 파이프라인</p>
         <div id="pipeline-viz" class="pipeline-viz">
-          <span class="pipeline-empty">응답 후 표시됩니다</span>
+          <span class="pipeline-empty">응답 후 표시됩니다.</span>
         </div>
 
         <p class="sidebar__label" style="margin-top:18px">모델 배치</p>
         <div id="model-map" class="model-map">
-          <span class="pipeline-empty">—</span>
+          <span class="pipeline-empty">-</span>
         </div>
 
         <p class="sidebar__label" style="margin-top:18px">RAG 검색 결과</p>
@@ -160,10 +181,16 @@
         </div>
 
         <p class="sidebar__label" style="margin-top:18px">추적 로그</p>
-        <div id="trace-path" class="trace-path">—</div>
+        <div id="trace-path" class="trace-path">-</div>
+
+        <p class="sidebar__label" style="margin-top:18px">Wiki Update</p>
+        <div id="wiki-status-panel" class="wiki-status-panel">
+          <span class="pipeline-empty">No wiki updates yet.</span>
+        </div>
       </aside>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="/static/app.js"></script>
   </body>
 </html>

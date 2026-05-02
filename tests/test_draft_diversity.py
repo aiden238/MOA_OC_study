@@ -96,8 +96,9 @@ class TestDraftDiversity:
             MockClient.return_value = mock_client
 
             task = TaskRequest(prompt="테스트 프롬프트")
-            results = await run_all_drafts(task)
+            results, failures = await run_all_drafts(task)
 
+        assert failures == []
         assert len(results) == 3
         agents = {r.agent_name for r in results}
         assert agents == {"draft_analytical", "draft_creative", "draft_structured"}
@@ -123,7 +124,8 @@ class TestDraftDiversity:
 
         with patch.object(DraftAgent, "run", mock_run):
             task = TaskRequest(prompt="테스트")
-            results = await run_all_drafts(task)
+            results, failures = await run_all_drafts(task)
 
         # creative가 실패해도 나머지 2개는 반환
+        assert len(failures) == 1
         assert len(results) == 2

@@ -187,6 +187,27 @@
         <div id="wiki-status-panel" class="wiki-status-panel">
           <span class="pipeline-empty">No wiki updates yet.</span>
         </div>
+        <div id="wiki-pending-panel" class="wiki-pending-panel">
+          <span class="pipeline-empty">No pending wiki candidates.</span>
+        </div>
+        <details class="wiki-candidate-form">
+          <summary>Submit wiki candidate</summary>
+          <input id="wiki-title-input" class="wiki-input" type="text" placeholder="Title" />
+          <select id="wiki-category-input" class="wiki-input">
+            <option value="advanced">Advanced</option>
+            <option value="prompt_engineering">Prompt Engineering</option>
+            <option value="context_engineering">Context Engineering</option>
+            <option value="harness_engineering">Harness Engineering</option>
+            <option value="basics">Basics</option>
+          </select>
+          <input id="wiki-tags-input" class="wiki-input" type="text" placeholder="tags, comma separated" />
+          <input id="wiki-related-input" class="wiki-input" type="text" placeholder="related files, comma separated" />
+          <input id="wiki-source-input" class="wiki-input" type="url" placeholder="Source URL optional" />
+          <textarea id="wiki-summary-input" class="wiki-input" rows="2" placeholder="Summary"></textarea>
+          <textarea id="wiki-content-input" class="wiki-input" rows="4" placeholder="Candidate content"></textarea>
+          <button id="wiki-submit-btn" type="button" class="wiki-submit-btn">Submit candidate</button>
+          <div id="wiki-form-message" class="wiki-form-message"></div>
+        </details>
       </aside>
     </div>
 

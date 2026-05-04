@@ -1104,6 +1104,124 @@ details[open] .adv-arrow { transform: rotate(90deg); }
   border-left: 2px solid rgba(16,185,129,0.4);
 }
 
+.wiki-pending-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.wiki-pending-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  padding: 10px;
+}
+
+.wiki-pending-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.wiki-pending-head span {
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.wiki-pending-meta,
+.wiki-pending-summary {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.wiki-pending-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.wiki-pending-actions button,
+.wiki-submit-btn {
+  border: 1px solid rgba(16,185,129,0.3);
+  background: rgba(16,185,129,0.12);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wiki-pending-actions button.reject {
+  border-color: rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.12);
+}
+
+.wiki-candidate-form {
+  margin-top: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.03);
+  padding: 10px;
+}
+
+.wiki-candidate-form summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.wiki-candidate-form summary::-webkit-details-marker {
+  display: none;
+}
+
+.wiki-input {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(15,23,42,0.9);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 7px 8px;
+  resize: vertical;
+}
+
+.wiki-submit-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.wiki-submit-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.wiki-form-message {
+  min-height: 16px;
+  margin-top: 6px;
+  color: var(--accent-teal);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.wiki-form-message.is-error {
+  color: var(--accent-red);
+}
+
 body.graph-focus-mode::after {
   content: "";
   position: fixed;

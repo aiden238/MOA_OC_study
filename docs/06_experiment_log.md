@@ -172,4 +172,35 @@
 - `data/benchmarks/v1_rag_mcp.json`을 6케이스로 확장했다(rag-002/003, mcp-002/003 추가).
 - 대표 증거: `data/outputs/full_rag-001__rag.json`, `data/outputs/full_mcp-001__mcp.json`, 비교표 CSV `data/outputs/comparison_w9_final.csv`를 git에 force-add 했다.
 
+---
+
+## Week 13 구현 검증 (2026-06-22)
+
+### 구현 범위
+
+- `/api/rag-knowledge` 기반 RAG 지식 패널을 Web UI에 유지하고 문서/예시 질문 로딩을 검증했다.
+- Knowledge Graph API와 D3 UI를 Week 13 산출물로 정리했다.
+- RAG 검색 전 `expand_query_with_graph()`를 통한 graph-augmented query expansion과 trace metadata 기록을 유지했다.
+- Self-Updating Wiki MVP의 manual candidate 제출, pending 조회, approve/reject API, approve 후 reindex/graph snapshot 흐름을 Web UI에서 조작할 수 있게 했다.
+
+### 검증
+
+```text
+python -m py_compile app\web\server.py app\rag\knowledge_graph.py app\rag\retriever.py app\wiki\pipeline.py
+node --check app\web\static\app.js
+pytest tests\test_knowledge_graph.py tests\test_wiki_pipeline.py tests\test_web_api.py -q
+pytest -q
+```
+
+결과:
+
+```text
+168 passed
+```
+
+### 비고
+
+- `run_full.py` 기반 LLM 실주행은 API key와 비용이 필요한 작업이라 이번 커밋 검증에서는 실행하지 않았다.
+- Week 13 문서 산출물은 `week13_implement.md`에 정리했다.
+
 

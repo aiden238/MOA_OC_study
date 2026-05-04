@@ -25,6 +25,9 @@ const graphFilterEl = document.getElementById("graph-category-filter");
 const graphExpandBtnEl = document.getElementById("graph-expand-btn");
 const graphCanvasEl = document.getElementById("knowledge-graph-canvas");
 const graphDetailEl = document.getElementById("knowledge-graph-detail");
+const wikiPendingPanelEl = document.getElementById("wiki-pending-panel");
+const wikiSubmitBtnEl = document.getElementById("wiki-submit-btn");
+const wikiFormMessageEl = document.getElementById("wiki-form-message");
 
 const AGENT_TAG = {
   single_baseline: { label: "Single", cls: "router" },
@@ -130,6 +133,7 @@ function resetMetricsPanel() {
   renderRagPanel({});
   renderMcpPanel({});
   renderWikiStatus({ pending_count: 0, approved_count: 0, latest_entries: [] });
+  renderWikiPending([]);
 }
 
 function updateSessionBadge(sessionId) {
@@ -352,6 +356,51 @@ function renderWikiStatus(status = {}) {
       }
     </div>
   `;
+}
+
+function renderWikiPending(items = []) {
+  if (!wikiPendingPanelEl) return;
+  const pendingItems = items.filter((item) => item.status === "pending");
+
+  if (!pendingItems.length) {
+    wikiPendingPanelEl.innerHTML = '<span class="pipeline-empty">No pending wiki candidates.</span>';
+    return;
+  }
+
+  wikiPendingPanelEl.innerHTML = pendingItems
+    .map(
+      (item) => `
+        <div class="wiki-pending-card">
+          <div class="wiki-pending-head">
+            <strong>${escapeHtml(item.title || item.filename || "Untitled")}</strong>
+            <span>${Number(item.confidence ?? 0).toFixed(2)}</span>
+          </div>
+          <div class="wiki-pending-meta">
+            ${escapeHtml(item.category || "uncategorized")}
+            ${Array.isArray(item.tags) && item.tags.length ? ` · ${escapeHtml(item.tags.slice(0, 3).join(", "))}` : ""}
+          </div>
+          ${item.summary ? `<div class="wiki-pending-summary">${escapeHtml(item.summary)}</div>` : ""}
+          <div class="wiki-pending-actions">
+            <button type="button" onclick="approveWikiPending(${JSON.stringify(item.pending_id)})">Approve</button>
+            <button type="button" class="reject" onclick="rejectWikiPending(${JSON.stringify(item.pending_id)})">Reject</button>
+          </div>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function parseCsvInput(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function setWikiFormMessage(message, isError = false) {
+  if (!wikiFormMessageEl) return;
+  wikiFormMessageEl.textContent = message || "";
+  wikiFormMessageEl.classList.toggle("is-error", Boolean(isError));
 }
 
 function updateMetrics(response) {
@@ -921,6 +970,105 @@ async function loadWikiStatus() {
   }
 }
 
+async function loadWikiPending() {
+  try {
+    const response = await fetch("/api/wiki/pending");
+    if (!response.ok) {
+      throw new Error(`Wiki pending endpoint returned ${response.status}`);
+    }
+    const payload = await response.json();
+    renderWikiPending(Array.isArray(payload.items) ? payload.items : []);
+  } catch (error) {
+    renderWikiPending([]);
+  }
+}
+
+async function refreshWikiPanels() {
+  await Promise.all([loadWikiStatus(), loadWikiPending()]);
+}
+
+async function approveWikiPending(pendingId) {
+  if (!pendingId) return;
+  setWikiFormMessage("");
+  const response = await fetch(`/api/wiki/pending/${encodeURIComponent(pendingId)}/approve`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    setWikiFormMessage(payload.detail || "Approve failed.", true);
+    return;
+  }
+  setWikiFormMessage("Candidate approved and reindexed.");
+  await Promise.all([refreshWikiPanels(), loadKnowledgePanel(), loadKnowledgeGraph()]);
+}
+
+async function rejectWikiPending(pendingId) {
+  if (!pendingId) return;
+  setWikiFormMessage("");
+  const response = await fetch(`/api/wiki/pending/${encodeURIComponent(pendingId)}/reject`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    setWikiFormMessage(payload.detail || "Reject failed.", true);
+    return;
+  }
+  setWikiFormMessage("Candidate rejected.");
+  await refreshWikiPanels();
+}
+
+async function submitWikiCandidate() {
+  const titleEl = document.getElementById("wiki-title-input");
+  const categoryEl = document.getElementById("wiki-category-input");
+  const tagsEl = document.getElementById("wiki-tags-input");
+  const relatedEl = document.getElementById("wiki-related-input");
+  const sourceEl = document.getElementById("wiki-source-input");
+  const summaryEl = document.getElementById("wiki-summary-input");
+  const contentEl = document.getElementById("wiki-content-input");
+  const title = titleEl?.value.trim() || "";
+  const content = contentEl?.value.trim() || "";
+
+  if (!title || !content) {
+    setWikiFormMessage("Title and content are required.", true);
+    return;
+  }
+
+  setWikiFormMessage("Submitting candidate...");
+  wikiSubmitBtnEl.disabled = true;
+  try {
+    const response = await fetch("/api/wiki/manual-candidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        content,
+        summary: summaryEl?.value.trim() || "",
+        category: categoryEl?.value || "advanced",
+        tags: parseCsvInput(tagsEl?.value),
+        related: parseCsvInput(relatedEl?.value),
+        source_url: sourceEl?.value.trim() || null,
+      }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || "Candidate submission failed.");
+    }
+
+    [titleEl, tagsEl, relatedEl, sourceEl, summaryEl, contentEl].forEach((element) => {
+      if (element) element.value = "";
+    });
+    setWikiFormMessage("Candidate submitted for review.");
+    await refreshWikiPanels();
+  } catch (error) {
+    setWikiFormMessage(error.message, true);
+  } finally {
+    wikiSubmitBtnEl.disabled = false;
+  }
+}
+
+window.approveWikiPending = approveWikiPending;
+window.rejectWikiPending = rejectWikiPending;
+
 pathSegmentedEl.addEventListener("click", (event) => {
   const button = event.target.closest(".seg-btn");
   if (!button) return;
@@ -939,6 +1087,7 @@ graphFilterEl.addEventListener("change", () => {
 graphExpandBtnEl?.addEventListener("click", () => {
   toggleGraphFocusMode();
 });
+wikiSubmitBtnEl?.addEventListener("click", submitWikiCandidate);
 
 window.addEventListener("resize", () => {
   if (state.graphData) {
@@ -963,5 +1112,5 @@ setPathSelection("auto");
 syncGraphExpandButton();
 loadRegistry().then(async () => {
   await createSession();
-  await Promise.all([loadKnowledgePanel(), loadKnowledgeGraph(), loadWikiStatus()]);
+  await Promise.all([loadKnowledgePanel(), loadKnowledgeGraph(), refreshWikiPanels()]);
 });

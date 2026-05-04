@@ -5,7 +5,7 @@
 | 항목 | 값 |
 |------|-----|
 | **주차** | 13주차 |
-| **상태** | 계획 작성 |
+| **상태** | 구현 및 로컬 검증 완료 |
 | **작성일** | 2026-06-22 |
 | **목표** | Week 12에서 기획한 RAG 지식 패널, Knowledge Graph, Self-Updating Wiki를 구현하고 안정화한다. |
 
@@ -157,3 +157,34 @@
 - Self-Updating Wiki MVP (manual candidate → approve → reindex)
 - 통합 테스트/회귀 테스트 통과
 - `week13_implement.md`와 관련 문서 정리
+
+---
+
+## 완료 업데이트 (2026-06-22)
+
+### 완료 범위
+
+- C13-1: Graph API 및 graph expansion 경로 확인
+- C13-2: Wiki approval workflow MVP API 확인
+- C13-3: Knowledge Graph UI 확인 및 Wiki pending UI 보강
+- C13-4: RAG 지식 패널 유지 및 Wiki manual candidate UI 추가
+- C13-5: Graph/Wiki Web API 테스트 보강
+- C13-6: README, experiment log, `week13_implement.md` 정리
+
+### DoD 결과
+
+- [x] `/api/rag-knowledge`가 카테고리별 문서 목록과 예시 질문을 반환한다.
+- [x] `/api/knowledge-graph` 및 관련 서브그래프 API가 정상 동작한다.
+- [x] Knowledge Graph가 Web UI에 시각화되고 노드 클릭/하이라이트가 가능하다.
+- [x] RAG 검색에서 graph-augmented query expansion metadata가 기록된다.
+- [x] Wiki 후보 수동 제출, 평가, 승인/거절, 승인 후 reindex/graph snapshot 흐름이 구현되어 있다.
+- [x] 정적 Web UI에서 Wiki pending 목록, 승인/거절, 최신 승인 이력이 표시된다.
+- [x] `pytest` 전체 통과: `168 passed`.
+- [x] `README.md`, `docs/06_experiment_log.md`, `week13_implement.md`를 갱신했다.
+
+### 검증 메모
+
+- `node --check app\web\static\app.js` 통과
+- `pytest tests\test_knowledge_graph.py tests\test_wiki_pipeline.py tests\test_web_api.py -q` 통과
+- `pytest -q` 통과
+- LLM API key와 비용이 필요한 `run_full.py` 실주행은 이번 커밋 검증에서 제외했다.

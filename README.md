@@ -144,6 +144,9 @@ uvicorn app.web.server:app --reload
 - agent별 override
 - preset 기반 다중 모델 조합
 - trace path / output path / routing metadata 반환
+- Week 13 RAG knowledge panel: `/api/rag-knowledge`
+- Week 13 Knowledge Graph: `/api/knowledge-graph`, `/api/knowledge-graph/neighbors`, `/api/knowledge-graph/highlight`
+- Week 13 Wiki MVP: `/api/wiki/status`, `/api/wiki/pending`, manual candidate submit, approve, reject
 
 현재 웹 레이어는 메모리 세션 저장소를 사용합니다. 영속 세션 저장은 후속 확장 범위입니다.
 
@@ -179,6 +182,12 @@ refs/
 ---
 
 ## 변경 기록
+
+### 2026-06-22
+
+- Week 13 RAG knowledge panel, Knowledge Graph UI, graph-augmented RAG metadata, and Wiki approval MVP를 현재 Web UI 범위로 정리했다.
+- Wiki pending 승인/거절 컨트롤과 manual candidate 제출 폼을 정적 UI에 추가했다.
+- `/api/rag-knowledge`, graph highlight/neighbors, Wiki reject flow에 대한 Web API 테스트를 추가했다.
 
 ### 2026-04-25
 

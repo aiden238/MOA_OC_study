@@ -35,6 +35,37 @@ class TestWebApi:
         assert payload["stats"]["edge_count"] > 0
         assert any(node["type"] == "document" for node in payload["nodes"])
 
+    def test_rag_knowledge_endpoint_returns_categories_and_examples(self):
+        client = _client()
+
+        response = client.get("/api/rag-knowledge")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["total_docs"] > 0
+        assert payload["categories"]
+        assert all("docs" in category for category in payload["categories"])
+        assert any(category.get("example_questions") for category in payload["categories"])
+
+    def test_knowledge_graph_highlight_and_neighbors(self):
+        client = _client()
+
+        highlight_response = client.get("/api/knowledge-graph/highlight", params={"query": "context compression"})
+
+        assert highlight_response.status_code == 200
+        matches = highlight_response.json()["matches"]
+        assert matches
+
+        neighbor_response = client.get(
+            "/api/knowledge-graph/neighbors",
+            params={"node_id": matches[0]["id"], "depth": 1},
+        )
+
+        assert neighbor_response.status_code == 200
+        payload = neighbor_response.json()
+        assert payload["nodes"]
+        assert payload["edges"]
+
     def test_wiki_manual_candidate_round_trip(self, tmp_path):
         client = _client()
         original_service = server.wiki_update_service
@@ -72,6 +103,37 @@ class TestWebApi:
             assert status_response.status_code == 200
             status_payload = status_response.json()
             assert status_payload["approved_count"] == 1
+        finally:
+            server.wiki_update_service = original_service
+
+    def test_wiki_reject_endpoint_marks_pending_candidate_rejected(self, tmp_path):
+        client = _client()
+        original_service = server.wiki_update_service
+        server.wiki_update_service = server.WikiUpdateService(
+            docs_dir=tmp_path / "rag_docs",
+            state_dir=tmp_path / "wiki_state",
+            knowledge_graph_dir=tmp_path / "knowledge_graph",
+            chroma_dir=tmp_path / "chroma",
+        )
+        server.wiki_update_service.docs_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            create_response = client.post(
+                "/api/wiki/manual-candidate",
+                json={
+                    "title": "Prompt Risk Note",
+                    "content": "Rejectable manual wiki candidate used by API tests.",
+                    "summary": "A small rejection test candidate.",
+                    "category": "advanced",
+                    "tags": ["prompt", "risk"],
+                },
+            )
+            assert create_response.status_code == 200
+            pending_id = create_response.json()["pending_id"]
+
+            reject_response = client.post(f"/api/wiki/pending/{pending_id}/reject")
+
+            assert reject_response.status_code == 200
+            assert reject_response.json()["status"] == "rejected"
         finally:
             server.wiki_update_service = original_service
 
